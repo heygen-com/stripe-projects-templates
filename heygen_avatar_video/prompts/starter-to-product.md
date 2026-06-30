@@ -9,6 +9,8 @@ rewrite everything.
    render-safety rules.
 2. Skim `lib/pipeline.ts`, `lib/heygen.ts`, `styles/<id>/index.html`, and `app/page.tsx` so you know
    what's wired before you change it.
+3. For HeyGen API / HyperFrames / CLI specifics, use the **Docs & references** section in `AGENTS.md`
+   — both doc sites have LLM-friendly `llms.txt` indexes.
 
 ## Then work in phases — ask before you build
 

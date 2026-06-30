@@ -96,3 +96,17 @@ cd styles/<id> && npx hyperframes lint      # validate before committing
 ```
 
 Requires **Node ≥ 22**. FFmpeg is bundled (`ffmpeg-static`); first render downloads a headless Chrome.
+
+## Docs & references
+
+Both doc sites publish an **`llms.txt`** index (a curated list linking the Markdown version of every page) — point your AI tools at those first.
+
+- **HeyGen API** — LLM index: <https://developers.heygen.com/llms.txt> · site: <https://developers.heygen.com/>
+  - *For AI agents* (the auth ladder MCP → CLI → REST): <https://developers.heygen.com/docs/for-ai-agents.md>
+  - v3 *Create Video* — the endpoint `lib/heygen.ts` calls: <https://developers.heygen.com/reference/create-video.md>
+  - Avatar looks · Voices: <https://developers.heygen.com/docs/avatar-looks.md> · <https://developers.heygen.com/docs/voices/overview.md>
+- **HeyGen CLI** — <https://developers.heygen.com/cli> — wraps the v3 API, outputs JSON, and auths via the **same `HEYGEN_API_KEY` this app uses**. Useful for exploring avatars/voices and scripting, e.g. the `heygen avatar looks list --ownership public --avatar-type digital_twin` command referenced above.
+- **HyperFrames** — LLM index: <https://hyperframes.heygen.com/llms.txt> · site: <https://hyperframes.heygen.com/introduction>
+  - HTML schema · data attributes · variables: <https://hyperframes.heygen.com/reference/html-schema.md> · <https://hyperframes.heygen.com/concepts/data-attributes.md> · <https://hyperframes.heygen.com/concepts/variables.md>
+  - GSAP animation · rendering: <https://hyperframes.heygen.com/guides/gsap-animation.md> · <https://hyperframes.heygen.com/guides/rendering.md>
+  - CLI: <https://hyperframes.heygen.com/packages/cli.md>
