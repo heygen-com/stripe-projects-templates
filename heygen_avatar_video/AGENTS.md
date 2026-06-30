@@ -33,7 +33,8 @@ live. So the app works with zero config.
 
 | Path | What it is |
 |------|-----------|
-| `app/page.tsx` | The whole UI (client): hero, sample modal, Create (form + player), Library, header. |
+| `app/page.tsx` | **Landing page** (`/`): hero, the three style demos (`public/demos/`), "Create your own video →" CTA to `/studio`. Server component. |
+| `app/studio/page.tsx` | **The creator UI** (`/studio`, client): style + avatar pickers, Create (form + player), Library, header. |
 | `app/api/generate/route.ts` | Starts a generation as a **fire-and-forget background job**; returns a `jobId` immediately (refresh-safe). Demo-mode short-circuit lives here. |
 | `app/api/renders/route.ts` + `[id]/route.ts` | List jobs / delete one. |
 | `app/api/account/route.ts` | Header greeting + wallet balance (`GET /v3/users/me`). |

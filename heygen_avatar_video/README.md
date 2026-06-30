@@ -21,6 +21,8 @@ pnpm install        # installs Next.js, HyperFrames (pinned), and bundled FFmpeg
 pnpm dev            # runs a preflight, then starts the app at http://localhost:3000
 ```
 
+The landing page (`/`) showcases the styles; **`/studio`** is the creator where you make videos.
+
 If you didn't scaffold via Stripe Projects, copy `.env.example` to `.env.local` and paste a key
 from <https://app.heygen.com/settings/api>.
 

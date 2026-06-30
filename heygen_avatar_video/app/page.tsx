@@ -1,392 +1,72 @@
-"use client";
+import Link from "next/link";
+import DemoGrid from "./DemoGrid";
 
-import { useEffect, useMemo, useState } from "react";
-import { AVATARS, DEFAULT_AVATAR_ID, getAvatar } from "@/lib/avatars";
-import { STYLES, DEFAULT_STYLE } from "@/lib/styles";
+const STEPS = [
+  { n: "1", t: "Write a script", d: "Type a title and a few lines. Pick a style and an avatar." },
+  { n: "2", t: "HeyGen speaks it", d: "The HeyGen API renders a talking avatar — provisioned in one command via Stripe Projects." },
+  { n: "3", t: "HyperFrames composes it", d: "Locally and free: motion graphics, synced captions, your branded video." },
+];
 
-const SCRIPT_MAX = 280; // keeps speech under the composition's ~20s body window (no truncation)
-// Title + script default to the selected avatar's name ("Meet Eric" / "Hi, I'm Eric, …"); picking an
-// avatar (or a style, which pre-selects its avatar) retunes them — unless the user edited the field.
-const defaultsFor = (name: string) => ({
-  title: `Meet ${name}`,
-  script: `Hi, I'm ${name}, your AI spokesperson. Type a script, pick a look, and I'll turn it into a branded video in minutes. No camera, no crew.`,
-});
-const INITIAL = defaultsFor(AVATARS[0].name);
-const SAMPLE = { url: "/demo.mp4", title: "Demo video", avatar: "Made with HeyGen + HyperFrames" }; // bundled free example
-
-const STEPS = ["Generating avatar (HeyGen API)", "Fetching captions", "Rendering composition (HyperFrames)"];
-
-type Status = "processing" | "done" | "error";
-type Video = {
-  id: string; title: string; avatar: string; status: Status; createdAt: string;
-  style?: string; aspectRatio?: string;
-  url?: string; error?: string; billing?: boolean; pricingUrl?: string;
-};
-type Account = { firstName: string; email: string; balance: string | null };
-type Tab = "create" | "library";
-
-export default function Home() {
-  const [tab, setTab] = useState<Tab>("create");
-  const [title, setTitle] = useState(INITIAL.title);
-  const [script, setScript] = useState(INITIAL.script);
-  const [avatarId, setAvatarId] = useState(DEFAULT_AVATAR_ID);
-  const [styleId, setStyleId] = useState<string>(DEFAULT_STYLE);
-  const [touchedTitle, setTouchedTitle] = useState(false); // don't clobber a user-typed title/script
-  const [touchedScript, setTouchedScript] = useState(false);
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [account, setAccount] = useState<Account | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null); // result slot = YOUR video only
-  const [resultAr, setResultAr] = useState<string | null>(null); // aspect ratio of the shown result
-  const [sampleOpen, setSampleOpen] = useState(false); // sample plays in a modal, never the result slot
-  const [barOpen, setBarOpen] = useState(true);
-  const [demoNote, setDemoNote] = useState<string | null>(null); // set when Generate runs in demo mode (no key)
-
-  async function loadVideos() {
-    try {
-      const data = await (await fetch("/api/renders")).json();
-      const vids: Video[] = data.videos ?? [];
-      setVideos(vids);
-      setActiveId((cur) => cur ?? vids.find((v) => v.status === "processing")?.id ?? null);
-    } catch {
-      /* best-effort */
-    }
-  }
-  useEffect(() => {
-    loadVideos();
-    fetch("/api/account").then((r) => r.json()).then(setAccount).catch(() => {});
-  }, []);
-
-  const hasProcessing = videos.some((v) => v.status === "processing");
-  useEffect(() => {
-    if (!hasProcessing) return;
-    const t = setInterval(loadVideos, 4000);
-    return () => clearInterval(t);
-  }, [hasProcessing]);
-
-  useEffect(() => {
-    if (!sampleOpen) return;
-    const h = (e: KeyboardEvent) => e.key === "Escape" && setSampleOpen(false);
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [sampleOpen]);
-
-  const active = useMemo(() => videos.find((v) => v.id === activeId), [videos, activeId]);
-  useEffect(() => {
-    if (active?.status === "done" && active.url) {
-      setVideoUrl(active.url);
-      setResultAr(active.aspectRatio ?? "16:9");
-      setDemoNote(null);
-    }
-  }, [active]);
-
-  const selectedStyle = useMemo(() => STYLES.find((s) => s.id === styleId) ?? STYLES[0], [styleId]);
-  // The stage shape: a finished result uses its own ratio; before that, preview the selected style's.
-  const stageAr = videoUrl ? resultAr ?? "16:9" : selectedStyle.aspectRatio;
-
-  // Selecting an avatar retunes title + script to its name (unless the user already typed their own).
-  function selectAvatar(id: string) {
-    setAvatarId(id);
-    const name = getAvatar(id)?.name;
-    if (!name) return;
-    const d = defaultsFor(name);
-    if (!touchedTitle) setTitle(d.title);
-    if (!touchedScript) setScript(d.script);
-  }
-  // Selecting a style pre-selects its fitting avatar (which in turn retunes the title/script).
-  function selectStyle(id: string) {
-    setStyleId(id);
-    const st = STYLES.find((s) => s.id === id);
-    if (st && getAvatar(st.defaultAvatarId)) selectAvatar(st.defaultAvatarId);
-  }
-
-  const running = active?.status === "processing";
-  const errored = active?.status === "error" ? active : null;
-  const done = videos.filter((v) => v.status === "done");
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, script, avatarId, style: styleId }),
-      });
-      const data = await res.json();
-      if (!res.ok) return;
-      if (data.demo) {
-        // No key yet — show the bundled sample as the result, clearly labeled.
-        setVideoUrl(data.url);
-        setResultAr("16:9"); // the bundled demo is 16:9
-        setDemoNote(data.message);
-        return;
-      }
-      setDemoNote(null);
-      setActiveId(data.jobId);
-      loadVideos();
-    } catch {
-      /* job may still run server-side; polling will surface it */
-    }
-  }
-
-  async function deleteVideo(id: string) {
-    const v = videos.find((x) => x.id === id);
-    await fetch(`/api/renders/${id}`, { method: "DELETE" }).catch(() => {});
-    if (v?.url && videoUrl === v.url) setVideoUrl(null);
-    if (activeId === id) setActiveId(null);
-    loadVideos();
-  }
-
-  const initial = (account?.firstName || account?.email || "?").trim().charAt(0).toUpperCase();
-
+export default function Landing() {
   return (
     <>
       <header className="bar">
         <div className="bar-inner">
-          <div className="brand">
+          <a className="brand" href="/" aria-label="HeyGen Studio home">
             <img className="orb" src="/heygen-orb.svg" alt="" />
             <span className="hg">HeyGen&nbsp;Studio</span>
-          </div>
-          <div className="acct">
-            {account?.balance && (
-              <span className="credits" title="Your HeyGen wallet — generating draws from this">
-                <span className="wlab">Wallet</span> <span className="coin" aria-hidden="true">◆</span> {account.balance}
-              </span>
-            )}
-            {(account?.firstName || account?.email) && (
-              <span className="avatar-initial" title={`${account?.firstName || ""}  ${account?.email || ""}`.trim()}>
-                {initial}
-              </span>
-            )}
-          </div>
+          </a>
+          <Link className="bar-link" href="/studio">Open Studio →</Link>
         </div>
       </header>
 
-      <div className="wrap">
-        <section className="hero">
-          <p className="hero-eyebrow">
-            {account?.firstName ? `Welcome back, ${account.firstName}` : "HeyGen × HyperFrames"}
+      <main className="lp">
+        <section className="lp-hero">
+          <p className="lp-eyebrow">HeyGen × HyperFrames · provisioned via Stripe Projects</p>
+          <h1 className="lp-title">Turn a script into a branded AI video.</h1>
+          <p className="lp-sub">
+            A HeyGen avatar composed over motion graphics with word-synced captions, rendered locally
+            with HyperFrames. Type a script, pick a style, and generate, no camera, no crew.
           </p>
-          <h1 className="hero-title">Turn a script into a branded AI video.</h1>
-          <p className="hero-sub">
-            A HeyGen avatar composed over motion graphics with synced captions, rendered locally with
-            HyperFrames — with the HeyGen API provisioned in one command via Stripe Projects. Type a
-            script, pick a look, and generate.
-          </p>
+          <div className="lp-actions">
+            <Link className="lp-cta" href="/studio">
+              Create your own video <span className="arr" aria-hidden="true">→</span>
+            </Link>
+            <a className="lp-ghost" href="#styles">See the styles</a>
+          </div>
         </section>
 
-        {barOpen && (
-          <div className="sample-bar">
-            <span>👋 New here? Watch a 15-second sample made with HeyGen&nbsp;+&nbsp;HyperFrames.</span>
-            <div className="sample-bar-actions">
-              <button type="button" className="sample-cta" onClick={() => setSampleOpen(true)}>
-                ▶ Watch sample
-              </button>
-              <button type="button" className="bar-x" aria-label="Dismiss" onClick={() => setBarOpen(false)}>
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
+        <section id="styles" className="lp-demos">
+          <h2 className="lp-h2">Three styles, one script</h2>
+          <p className="lp-lede">Every video starts from the same script. The style decides the look, layout, captions, and shape.</p>
+          <DemoGrid />
+        </section>
 
-        <nav className="tabs" role="tablist">
-          <button role="tab" aria-selected={tab === "create"} className="tab" onClick={() => setTab("create")}>
-            Create
-          </button>
-          <button role="tab" aria-selected={tab === "library"} className="tab" onClick={() => setTab("library")}>
-            Library{done.length ? <span className="count">{done.length}</span> : null}
-          </button>
-        </nav>
+        <section className="lp-how">
+          <h2 className="lp-h2">How it works</h2>
+          <ol className="lp-steps">
+            {STEPS.map((s) => (
+              <li key={s.n}>
+                <span className="lp-num">{s.n}</span>
+                <span className="lp-step-t">{s.t}</span>
+                <span className="lp-step-d">{s.d}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-        {tab === "create" && (
-          <div className="create">
-            <section className="player-col">
-              <div className="stage" data-ar={stageAr}>
-                {running ? (
-                  <div className="generating">
-                    <div className="spinner" />
-                    <span>Generating… this keeps running even if you refresh.</span>
-                  </div>
-                ) : videoUrl ? (
-                  <video key={videoUrl} src={videoUrl} controls autoPlay playsInline />
-                ) : (
-                  <span className="placeholder">Your video will appear here</span>
-                )}
-              </div>
+        <section className="lp-band">
+          <h2 className="lp-band-h">Make your first one in a minute.</h2>
+          <Link className="lp-cta lp-cta-lg" href="/studio">
+            Create your own video <span className="arr" aria-hidden="true">→</span>
+          </Link>
+          <p className="lp-band-note">Works instantly with a bundled demo; add the <code>heygen/api</code> service to render your own script.</p>
+        </section>
+      </main>
 
-              {demoNote && (
-                <div className="demo-result">
-                  <span className="d-badge">Demo</span>
-                  <span>{demoNote}</span>
-                </div>
-              )}
-
-              {running && (
-                <ol className="steps">
-                  {STEPS.map((s, i) => (
-                    <li key={s} data-on="active">
-                      <span className="mark">{i + 1}</span> {s}
-                    </li>
-                  ))}
-                </ol>
-              )}
-
-              {errored && (
-                <div className="err">
-                  <span>⚠</span>
-                  <span>
-                    {errored.billing ? "Out of HeyGen credits. " : ""}
-                    {errored.error}
-                    {errored.billing && errored.pricingUrl && (
-                      <>
-                        {" "}
-                        <a href={errored.pricingUrl} target="_blank" rel="noopener">Check pricing / top up</a>.
-                      </>
-                    )}
-                  </span>
-                </div>
-              )}
-            </section>
-
-            <form className="card compose" onSubmit={onSubmit}>
-              <h2>New video</h2>
-              <label className="fld">
-                <span className="lab">Title</span>
-                <input type="text" value={title} onChange={(e) => { setTitle(e.target.value); setTouchedTitle(true); }} maxLength={80} />
-              </label>
-              <label className="fld">
-                <span className="lab">
-                  Script <span className="hint">— what the avatar says</span>
-                </span>
-                <textarea
-                  value={script}
-                  onChange={(e) => { setScript(e.target.value.slice(0, SCRIPT_MAX)); setTouchedScript(true); }}
-                  maxLength={SCRIPT_MAX}
-                />
-                <span className={`counter ${script.length > SCRIPT_MAX - 30 ? "near" : ""}`}>
-                  {script.length}/{SCRIPT_MAX}
-                </span>
-              </label>
-              <span className="pick-lab">Style</span>
-              <div className="styles-pick" role="group" aria-label="Choose a composition style">
-                {STYLES.map((s) => (
-                  <button
-                    type="button"
-                    key={s.id}
-                    className="style-opt"
-                    aria-pressed={styleId === s.id}
-                    onClick={() => selectStyle(s.id)}
-                    title={s.description}
-                  >
-                    <span className="so-name">{s.label}</span>
-                    <span className="so-ar">{s.aspectRatio}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="style-desc">{selectedStyle.description}</p>
-
-              <span className="pick-lab">Avatar</span>
-              <div className="avatars" role="group" aria-label="Choose an avatar">
-                {AVATARS.map((a) => (
-                  <button
-                    type="button"
-                    key={a.id}
-                    className="avatar"
-                    aria-pressed={avatarId === a.id}
-                    onClick={() => selectAvatar(a.id)}
-                  >
-                    <img className="thumb" src={a.thumbnailUrl} alt={a.name} />
-                    <span className="chk">✓</span>
-                    <span className="nm">{a.name}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="notice">
-                <span className="i">!</span>
-                <span>
-                  Generating spends <b>HeyGen credits</b> (
-                  <a href="https://developers.heygen.com/docs/pricing" target="_blank" rel="noopener">pay-as-you-go</a>
-                  ). The sample is free to watch; captions and rendering are local.
-                </span>
-              </div>
-              <button className="btn" type="submit" disabled={running || !script.trim()}>
-                {running ? "Generating…" : "Generate video"}
-              </button>
-            </form>
-          </div>
-        )}
-
-        {tab === "library" && (
-          <div className="library">
-            <div className="lib-grid">
-              {/* Pinned bundled sample — always present, free, not deletable */}
-              <div className="lib-card" data-status="sample">
-                <video src={SAMPLE.url} controls preload="metadata" playsInline />
-                <div className="meta">
-                  <span className="t">{SAMPLE.title} <span className="tag">Sample</span></span>
-                  <span className="sub2">{SAMPLE.avatar} · bundled example, free to watch</span>
-                </div>
-                <div className="card-actions">
-                  <a className="dl" href={SAMPLE.url} download>↓ Download</a>
-                </div>
-              </div>
-              {videos.length === 0 && (
-                <div className="lib-card empty-card">
-                  <div className="lib-ph">
-                    <span>Your videos will appear here</span>
-                    <button className="link" onClick={() => setTab("create")}>Create one →</button>
-                  </div>
-                </div>
-              )}
-              {videos.map((v) => (
-                  <div className="lib-card" key={v.id} data-status={v.status} data-ar={v.aspectRatio ?? "16:9"}>
-                    {v.status === "done" && v.url ? (
-                      <video src={v.url} controls preload="metadata" playsInline />
-                    ) : v.status === "processing" ? (
-                      <div className="lib-ph">
-                        <div className="spinner" />
-                        <span>Generating…</span>
-                      </div>
-                    ) : (
-                      <div className="lib-ph err-ph">
-                        <span>⚠ Generation failed</span>
-                      </div>
-                    )}
-                    <div className="meta">
-                      <span className="t">{v.title}</span>
-                      <span className="sub2">{v.avatar} · {new Date(v.createdAt).toLocaleString()}</span>
-                    </div>
-                    <div className="card-actions">
-                      {v.status === "done" && v.url && (
-                        <a className="dl" href={v.url} download>↓ Download</a>
-                      )}
-                      <button className="del" onClick={() => deleteVideo(v.id)} aria-label="Delete video" title="Delete">
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-
-        <footer className="foot">
-          <span className="dot" /> Provisioned via Stripe Projects · <code>heygen/api</code>
-        </footer>
-      </div>
-
-      {sampleOpen && (
-        <div className="modal-backdrop" onClick={() => setSampleOpen(false)}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Sample video" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <span>Sample · {SAMPLE.title.replace("Sample · ", "")}</span>
-              <button type="button" className="bar-x" aria-label="Close" onClick={() => setSampleOpen(false)}>✕</button>
-            </div>
-            <video src={SAMPLE.url} controls autoPlay playsInline />
-            <p className="modal-note">A bundled example made with this template — a HeyGen avatar composed in HyperFrames. Free to watch; making your own spends credits.</p>
-          </div>
-        </div>
-      )}
+      <footer className="lp-foot">
+        <span className="dot" /> Provisioned via Stripe Projects · <code>heygen/api</code> · built with HeyGen + HyperFrames
+      </footer>
     </>
   );
 }
