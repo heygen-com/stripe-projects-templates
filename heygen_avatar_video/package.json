@@ -1,5 +1,5 @@
 {
-  "name": "heygen-video-overlay",
+  "name": "heygen-avatar-video",
   "version": "1.0.0",
   "private": true,
   "description": "Prompt to an AI avatar video with motion graphics, captions, and shader transitions — powered by the HeyGen API, provisioned via Stripe Projects.",

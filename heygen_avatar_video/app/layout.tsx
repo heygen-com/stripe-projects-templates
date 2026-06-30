@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HeyGen AI Video Overlay",
+  title: "HeyGen Studio",
   description: "Prompt to an AI avatar video with motion graphics and captions, powered by the HeyGen API.",
 };
 

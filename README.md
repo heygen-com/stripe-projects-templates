@@ -11,7 +11,7 @@ manifest that pins a commit in this repo.
 
 | Template | What it does | Stack |
 |----------|--------------|-------|
-| [`heygen_video_overlay/`](./heygen_video_overlay) | Prompt → an AI avatar video with motion graphics, word-synced captions, and shader transitions | Next.js · HeyGen · HyperFrames |
+| [`heygen_avatar_video/`](./heygen_avatar_video) | Prompt → an AI avatar video with motion graphics, word-synced captions, and shader transitions | Next.js · HeyGen · HyperFrames |
 
 Scaffold one with:
 

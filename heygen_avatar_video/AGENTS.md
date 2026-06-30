@@ -1,4 +1,4 @@
-# AGENTS.md — HeyGen Studio (Video Overlay starter)
+# AGENTS.md — HeyGen Studio (heygen_avatar_video)
 
 Guidance for AI coding tools (Claude, Codex, etc.) working in this template. Read this before
 editing, then see `prompts/starter-to-product.md` for the "turn this into a real product" flow.
