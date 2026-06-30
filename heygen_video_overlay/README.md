@@ -1,14 +1,17 @@
-# HeyGen AI Video Overlay
+# HeyGen Studio
 
 A Next.js starter that turns a **title + script** into a branded AI video: a HeyGen avatar
-presenting over motion graphics, with **word-synced captions**. The avatar runs on the **HeyGen
+presenting over motion graphics, with **synced captions**. The avatar runs on the **HeyGen
 API** (`heygen/api`) that Stripe Projects provisions; everything else renders **locally and free**
-with [HyperFrames](https://hyperframes.heygen.com).
+with [HyperFrames](https://hyperframes.heygen.com). A dual showcase — HeyGen for the avatar,
+HyperFrames for the composition.
 
 ## What you get
 
-- A one-page web app: pick one of 3 avatars, write a script, generate, watch the result.
+- A one-page web app: pick an avatar, write a script, generate, watch the result; a Library of past videos.
 - A server-side pipeline: HeyGen v3 render → captions (SRT import) → HyperFrames render.
+- **Zero-config demo mode:** with no key it boots and "Generate" returns a bundled sample, so it
+  works immediately; adding `heygen/api` flips it to live (renders your own script).
 - Zero secrets in the repo — the API key arrives via `stripe projects env --pull`.
 
 ## Run it
@@ -27,7 +30,7 @@ fast. You need **Node ≥ 22**; FFmpeg is bundled (`ffmpeg-static`), so no syste
 
 ## How it works
 
-Generating one video runs four steps server-side (`lib/pipeline.ts`):
+Generating one video runs three steps server-side (`lib/pipeline.ts`):
 
 | Step | Tool | Cost |
 |------|------|------|
@@ -45,8 +48,21 @@ the local steps don't.
 - **Avatars:** `lib/avatars.ts` — three validated public digital-twin looks. Swap in others from
   `heygen avatar looks list --ownership public --avatar-type digital_twin` (must support Avatar IV/V).
 - **The video itself:** `composition/` is a HyperFrames project. `cd composition && npx hyperframes preview`
-  to edit the title card, captions, motion, and transitions live.
-- **Turn it into a product** with your AI coding tool of choice, pointed at this repo.
+  to edit the title card, captions, motion, and transitions live. (See `AGENTS.md` for the
+  render-safety rules before editing.)
+- **The whole codebase** is described for AI tools in [`AGENTS.md`](./AGENTS.md).
+
+### Turn it into your product (with AI)
+
+Point your coding agent at this repo and have it follow the included prompt:
+
+```bash
+claude "Help me turn this into a real product. Follow prompts/starter-to-product.md."
+# or:  codex "Help me turn this into a real product. Follow prompts/starter-to-product.md."
+```
+
+It reads `AGENTS.md`, asks what you're building one question at a time, and evolves the starter while
+keeping the HeyGen + HyperFrames + Stripe Projects wiring intact.
 
 ## Deploying
 
