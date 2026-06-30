@@ -28,6 +28,8 @@ export default function Home() {
   const [account, setAccount] = useState<Account | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null); // result slot = YOUR video only
+  const [sampleOpen, setSampleOpen] = useState(false); // sample plays in a modal, never the result slot
+  const [barOpen, setBarOpen] = useState(true);
 
   async function loadVideos() {
     try {
@@ -51,6 +53,13 @@ export default function Home() {
     return () => clearInterval(t);
   }, [hasProcessing]);
 
+  useEffect(() => {
+    if (!sampleOpen) return;
+    const h = (e: KeyboardEvent) => e.key === "Escape" && setSampleOpen(false);
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [sampleOpen]);
+
   const active = useMemo(() => videos.find((v) => v.id === activeId), [videos, activeId]);
   useEffect(() => {
     if (active?.status === "done" && active.url) setVideoUrl(active.url);
@@ -59,7 +68,6 @@ export default function Home() {
   const running = active?.status === "processing";
   const errored = active?.status === "error" ? active : null;
   const done = videos.filter((v) => v.status === "done");
-  const showingSample = videoUrl === SAMPLE.url;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,6 +122,20 @@ export default function Home() {
       <div className="wrap">
         {account?.firstName && <p className="welcome">Welcome back, {account.firstName}.</p>}
 
+        {barOpen && (
+          <div className="sample-bar">
+            <span>👋 New here? Watch a 15-second sample made with HeyGen&nbsp;+&nbsp;HyperFrames.</span>
+            <div className="sample-bar-actions">
+              <button type="button" className="sample-cta" onClick={() => setSampleOpen(true)}>
+                ▶ Watch sample
+              </button>
+              <button type="button" className="bar-x" aria-label="Dismiss" onClick={() => setBarOpen(false)}>
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         <nav className="tabs" role="tablist">
           <button role="tab" aria-selected={tab === "create"} className="tab" onClick={() => setTab("create")}>
             Create
@@ -133,17 +155,9 @@ export default function Home() {
                     <span>Generating… this keeps running even if you refresh.</span>
                   </div>
                 ) : videoUrl ? (
-                  <>
-                    <video key={videoUrl} src={videoUrl} controls autoPlay playsInline />
-                    {showingSample && <span className="demo-pill">Sample · free</span>}
-                  </>
+                  <video key={videoUrl} src={videoUrl} controls autoPlay playsInline />
                 ) : (
-                  <div className="idle-cta">
-                    <span className="placeholder">Your video will appear here</span>
-                    <button type="button" className="watch-sample" onClick={() => setVideoUrl(SAMPLE.url)}>
-                      ▶ Watch a sample
-                    </button>
-                  </div>
+                  <span className="placeholder">Your video will appear here</span>
                 )}
               </div>
 
@@ -282,6 +296,19 @@ export default function Home() {
           <span className="dot" /> Provisioned via Stripe Projects · <code>heygen/api</code>
         </footer>
       </div>
+
+      {sampleOpen && (
+        <div className="modal-backdrop" onClick={() => setSampleOpen(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Sample video" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <span>Sample · {SAMPLE.title.replace("Sample · ", "")}</span>
+              <button type="button" className="bar-x" aria-label="Close" onClick={() => setSampleOpen(false)}>✕</button>
+            </div>
+            <video src={SAMPLE.url} controls autoPlay playsInline />
+            <p className="modal-note">A bundled example made with this template — a HeyGen avatar composed in HyperFrames. Free to watch; making your own spends credits.</p>
+          </div>
+        </div>
+      )}
     </>
   );
 }

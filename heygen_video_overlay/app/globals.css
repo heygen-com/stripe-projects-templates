@@ -33,6 +33,21 @@ img { max-width: 100%; }
 .counter { display: block; text-align: right; font-size: 12px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .counter.near { color: var(--warn); }
 
+/* Top bar that opens the sample in a modal (sample never touches the result slot) */
+.sample-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--accent-wash); border: 1px solid #e3daff; border-radius: 12px; padding: 11px 16px; margin: 18px 0 6px; font-size: 14px; color: var(--ink); }
+.sample-bar-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.sample-cta { appearance: none; border: none; background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: 13.5px; border-radius: 9px; padding: 8px 14px; cursor: pointer; }
+.sample-cta:hover { background: var(--accent-press); }
+.bar-x { appearance: none; border: none; background: none; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 5px 7px; border-radius: 6px; }
+.bar-x:hover { color: var(--ink); background: rgba(0, 0, 0, 0.05); }
+
+/* Sample lightbox */
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(15, 13, 24, 0.62); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 24px; }
+.modal { width: min(880px, 92vw); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; border-bottom: 1px solid var(--border); font-weight: 650; font-size: 15px; }
+.modal video { width: 100%; aspect-ratio: 16 / 9; display: block; background: #000; }
+.modal-note { margin: 0; padding: 13px 18px; color: var(--muted); font-size: 13px; }
+
 .generating { display: flex; flex-direction: column; align-items: center; gap: 16px; color: #cfc8e8; font-size: 15px; padding: 0 8%; text-align: center; }
 .spinner { width: 42px; height: 42px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.16); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
