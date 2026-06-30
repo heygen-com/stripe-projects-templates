@@ -76,13 +76,20 @@ function trim(input: string, output: string, seconds: number): Promise<void> {
 // HeyGen's v3 mp4 ships a sparse GOP (~one keyframe every 5s). HyperFrames seek-renders frame by
 // frame, and seeking to a non-keyframe paints the prior keyframe — so the avatar visibly FREEZES
 // for seconds at a time under the overlays. Re-encode with a dense keyframe interval (every 12
-// frames, ~0.5s) so every seeked frame decodes exactly. Audio is re-muxed unchanged.
-function reencodeDenseKeyframes(input: string, output: string): Promise<void> {
+// frames, ~0.5s) so every seeked frame decodes exactly.
+// `speed` (<1 = slower) retimes BOTH video (setpts) and audio (atempo, pitch-preserving) by the same
+// factor so lip-sync holds; the caption cues are scaled by 1/speed to match (see generate()). The
+// HeyGen API has no speed knob on this endpoint, so we do it here.
+function reencodeDenseKeyframes(input: string, output: string, speed = 1): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!ffmpegStatic) return reject(new Error("ffmpeg-static missing"));
+    const retime =
+      speed !== 1
+        ? ["-filter_complex", `[0:v]setpts=PTS/${speed}[v];[0:a]atempo=${speed}[a]`, "-map", "[v]", "-map", "[a]"]
+        : [];
     const p = spawn(
       ffmpegStatic,
-      ["-y", "-i", input, "-c:v", "libx264", "-crf", "18", "-g", "12", "-keyint_min", "12", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-c:a", "aac", output],
+      ["-y", "-i", input, ...retime, "-c:v", "libx264", "-crf", "18", "-g", "12", "-keyint_min", "12", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-c:a", "aac", output],
       { stdio: "inherit" },
     );
     p.on("error", reject);
@@ -128,7 +135,18 @@ export async function generate(
   if (!subtitleUrl) throw new Error("HeyGen returned no subtitle_url (caption sidecar missing)");
   await download(subtitleUrl, captionsSrt);
   await run(["transcribe", captionsSrt], work);
-  const cues = JSON.parse(await readFile(path.join(work, "transcript.json"), "utf8"));
+  const speed = avatar.speed && avatar.speed > 0 ? avatar.speed : 1;
+  let cues = JSON.parse(await readFile(path.join(work, "transcript.json"), "utf8"));
+  if (speed !== 1) {
+    // Slowing the avatar stretches the speech by 1/speed; scale the cue times to match so captions
+    // stay aligned with the (now slower) audio.
+    cues = cues.map((c: { start?: number; end?: number; text?: string }) => ({
+      ...c,
+      start: (c.start ?? 0) / speed,
+      end: (c.end ?? 0) / speed,
+    }));
+    await writeFile(path.join(work, "transcript.json"), JSON.stringify(cues));
+  }
   const speechMs = durationMs(cues);
 
   // 3. Stage assets + render the chosen style. HyperFrames variables are scalars only
@@ -142,7 +160,8 @@ export async function generate(
     const assets = path.join(compDir, "assets");
     await mkdir(assets, { recursive: true });
     // Re-encode (not copy) so the avatar is densely keyframed — otherwise it freezes on seek-render.
-    await reencodeDenseKeyframes(avatarFile, path.join(assets, "avatar.mp4"));
+    // `speed` also retimes the avatar here (the API has no speed knob on this endpoint).
+    await reencodeDenseKeyframes(avatarFile, path.join(assets, "avatar.mp4"), speed);
     await copyFile(path.join(work, "transcript.json"), path.join(assets, "transcript.json"));
 
     const vars = {

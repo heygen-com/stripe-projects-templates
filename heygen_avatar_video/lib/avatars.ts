@@ -9,6 +9,7 @@ export type Avatar = {
   name: string;
   voiceId: string; // the look's default_voice_id
   thumbnailUrl: string;
+  speed?: number; // voice speed multiplier (1.0 = normal); set <1 to slow a fast voice
 };
 
 export const AVATARS: Avatar[] = [
@@ -34,6 +35,7 @@ export const AVATARS: Avatar[] = [
     voiceId: "356156e8f0e84c9e982744e4b0cd3208",
     thumbnailUrl:
       "https://files2.heygen.ai/avatar/v3/660d840fa6a5491cb60e4e1a3148feb3/half/2.2/preview_target.webp",
+    speed: 0.9, // his default voice runs fast; ease it down a touch
   },
 ];
 
