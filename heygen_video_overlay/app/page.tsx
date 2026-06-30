@@ -78,6 +78,14 @@ export default function Home() {
     }
   }
 
+  async function deleteVideo(id: string) {
+    const v = videos.find((x) => x.id === id);
+    await fetch(`/api/renders/${id}`, { method: "DELETE" }).catch(() => {});
+    if (v?.url && videoUrl === v.url) setVideoUrl(DEMO_URL);
+    if (activeId === id) setActiveId(null);
+    loadVideos();
+  }
+
   const initial = (account?.firstName || account?.email || "?").trim().charAt(0).toUpperCase();
 
   return (
@@ -211,20 +219,38 @@ export default function Home() {
 
         {tab === "library" && (
           <div className="library">
-            {done.length === 0 ? (
+            {videos.length === 0 ? (
               <div className="empty">
                 No videos yet. Head to <button className="link" onClick={() => setTab("create")}>Create</button> to make your first one.
               </div>
             ) : (
               <div className="lib-grid">
-                {done.map((v) => (
-                  <div className="lib-card" key={v.id}>
-                    <video src={v.url} controls preload="metadata" playsInline />
+                {videos.map((v) => (
+                  <div className="lib-card" key={v.id} data-status={v.status}>
+                    {v.status === "done" && v.url ? (
+                      <video src={v.url} controls preload="metadata" playsInline />
+                    ) : v.status === "processing" ? (
+                      <div className="lib-ph">
+                        <div className="spinner" />
+                        <span>Generating…</span>
+                      </div>
+                    ) : (
+                      <div className="lib-ph err-ph">
+                        <span>⚠ Generation failed</span>
+                      </div>
+                    )}
                     <div className="meta">
                       <span className="t">{v.title}</span>
                       <span className="sub2">{v.avatar} · {new Date(v.createdAt).toLocaleString()}</span>
                     </div>
-                    <a className="dl" href={v.url} download>↓ Download</a>
+                    <div className="card-actions">
+                      {v.status === "done" && v.url && (
+                        <a className="dl" href={v.url} download>↓ Download</a>
+                      )}
+                      <button className="del" onClick={() => deleteVideo(v.id)} aria-label="Delete video" title="Delete">
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

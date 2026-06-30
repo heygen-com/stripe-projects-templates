@@ -2,7 +2,7 @@
 // "processing" up front and updated to "done"/"error" when the background pipeline finishes — so a
 // page refresh mid-generation can re-attach to the in-flight job (the work keeps running
 // server-side). A production app would use a DB + a real queue/worker; this is the starter level.
-import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 
 const DIR = path.join(process.cwd(), "public", "renders");
@@ -31,6 +31,14 @@ export async function writeJob(id: string, patch: Partial<Job>): Promise<void> {
     /* first write */
   }
   await writeFile(file(id), JSON.stringify({ ...existing, ...patch, id }));
+}
+
+// Delete a job's video + sidecar. id is validated against a strict charset (no path traversal).
+export async function deleteJob(id: string): Promise<boolean> {
+  if (!/^[a-z0-9_-]+$/i.test(id)) return false;
+  await rm(file(id), { force: true }).catch(() => {});
+  await rm(path.join(DIR, `${id}.mp4`), { force: true }).catch(() => {});
+  return true;
 }
 
 export async function listJobs(): Promise<Job[]> {
