@@ -7,7 +7,7 @@ rewrite everything.
 
 1. Read **`AGENTS.md`** — it describes the codebase, the HeyGen + HyperFrames pipeline, and the
    render-safety rules.
-2. Skim `lib/pipeline.ts`, `lib/heygen.ts`, `composition/index.html`, and `app/page.tsx` so you know
+2. Skim `lib/pipeline.ts`, `lib/heygen.ts`, `styles/<id>/index.html`, and `app/page.tsx` so you know
    what's wired before you change it.
 
 ## Then work in phases — ask before you build
@@ -37,8 +37,8 @@ first, polish later), checking in between phases.
 
 - Branding/copy: the hero, header, colors, and the composition's `brandColor`/title styling.
 - Avatars: `lib/avatars.ts` (digital-twin/photo-avatar public looks, or the user's own avatars).
-- The video itself: `composition/index.html` — scenes, motion, captions, transitions. Iterate with
-  `cd composition && npx hyperframes preview`.
+- The video itself: `styles/<id>/index.html` — scenes, motion, captions, transitions. Iterate with
+  `cd styles/<id> && npx hyperframes preview`.
 - New inputs (CSV, brand kit, a real product catalog) → new form fields + pipeline params.
 
 Lead with the user's actual use case. Keep the integration intact; change everything above it.
