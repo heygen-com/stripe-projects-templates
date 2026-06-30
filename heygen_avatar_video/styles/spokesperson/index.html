@@ -1,0 +1,323 @@
+<!doctype html>
+<html
+  lang="en"
+  data-resolution="landscape"
+  data-composition-variables='[
+    { "id": "title", "type": "string", "label": "Title", "default": "Your AI spokesperson, on demand" },
+    { "id": "tagline", "type": "string", "label": "Tagline", "default": "Built with HeyGen · Stripe Projects" },
+    { "id": "brandColor", "type": "color", "label": "Brand color", "default": "#6d4aff" },
+    { "id": "introDurationMs", "type": "number", "label": "Intro ms", "default": 2500 },
+    { "id": "bodyDurationMs", "type": "number", "label": "Body ms", "default": 10500 },
+    { "id": "outroDurationMs", "type": "number", "label": "Outro ms", "default": 2500 },
+    { "id": "speechStartMs", "type": "number", "label": "Speech start ms", "default": 2500 }
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0f0d18; }
+      body { font-family: "Inter", system-ui, sans-serif; color: #ece9f6; }
+
+      /* ---- Violet Noir palette ----
+         bg #0f0d18 · accent #6d4aff · accent-light #9b7bff · text #ece9f6 */
+      #bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+
+      .layer { position: absolute; inset: 0; }
+
+      /* === Intro / outro centered text === */
+      #title { display: grid; place-items: center; padding: 0 12%; text-align: center; z-index: 30; }
+      #title .kicker {
+        font-size: 26px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase;
+        color: var(--brand-light); opacity: 0.95; margin-bottom: 26px;
+        text-shadow: 0 2px 24px rgba(109, 74, 255, 0.45);
+      }
+      /* Gradient headline — single clean paint pass.
+         RENDER-SAFETY (learned from render-verify): on a `background-clip: text` element,
+         Chrome's headless rasterizer composites the clipped gradient in one layer and the
+         glyph geometry separately. ANIMATING the element (background-position sweep, OR a
+         blur/scale on it or an ancestor) re-rasterizes those layers out of sync and ghosts
+         the text into two horizontally-offset copies. So: the gradient is STATIC (no
+         position sweep), the headline gets only an opacity/translate entrance, and the
+         intro exit blur lives on a wrapper, never on the clipped-text subtree. */
+      #title h1 {
+        font-size: 138px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.0; text-wrap: balance;
+        background-image: linear-gradient(100deg,
+          #ece9f6 0%, var(--brand-light) 38%, #ffffff 60%, var(--brand) 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      /* soft drop glow sits on the wrapper, not the clipped text (which can't take a layer-forcing filter) */
+      #title .title-wrap { filter: drop-shadow(0 14px 60px rgba(0, 0, 0, 0.5)); }
+
+      /* === Body: avatar full-bleed (object-fit cover) === */
+      #stage { position: absolute; inset: 0; z-index: 10; overflow: hidden; }
+      .parallax-zoom-grid { position: absolute; inset: 0; }
+      .parallax-zoom-card { position: absolute; inset: 0; }
+      #avatar-card { width: 100%; height: 100%; }
+      #avatar-card video {
+        width: 100%; height: 100%; object-fit: cover; object-position: center 18%; display: block;
+      }
+      /* readability scrim so caption + brandbar sit on a controlled base */
+      #scrim {
+        position: absolute; inset: 0; z-index: 12; pointer-events: none;
+        background: linear-gradient(to top,
+          rgba(15, 13, 24, 0.92) 0%, rgba(15, 13, 24, 0.55) 22%, rgba(15, 13, 24, 0) 46%);
+      }
+      /* accent wash from the left to tie the avatar to the brand */
+      #wash {
+        position: absolute; inset: 0; z-index: 11; pointer-events: none; mix-blend-mode: screen;
+        background: radial-gradient(60% 80% at 6% 50%, rgba(109, 74, 255, 0.28) 0%, rgba(109, 74, 255, 0) 60%);
+      }
+
+      /* === Glass caption bar (registry: caption-gradient-fill technique) === */
+      #cap-bar {
+        position: absolute; left: 50%; transform: translateX(-50%); bottom: 8.5%;
+        z-index: 40; max-width: 70%; padding: 22px 40px;
+        border-radius: 22px;
+        background: rgba(20, 16, 34, 0.42);
+        border: 1px solid rgba(155, 123, 255, 0.32);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+      }
+      #cap-span {
+        display: inline-block; font-size: 46px; font-weight: 800; line-height: 1.22;
+        letter-spacing: 0.005em; text-align: center;
+        background-image: linear-gradient(100deg,
+          var(--brand-light) 0%, #ece9f6 42%, #ffffff 50%, #ece9f6 58%, var(--brand) 100%);
+        background-size: 280% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 18px rgba(109, 74, 255, 0.55)) drop-shadow(0 3px 10px rgba(0, 0, 0, 0.6));
+      }
+
+      /* small brandbar */
+      #brandbar {
+        position: absolute; left: 8%; bottom: 5.5%; z-index: 40;
+        font-size: 22px; font-weight: 600; color: rgba(236, 233, 246, 0.82); letter-spacing: 0.06em;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+      }
+      #brandbar::before {
+        content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 12px;
+        border-radius: 50%; background: var(--brand-light); vertical-align: middle;
+        box-shadow: 0 0 12px var(--brand-light);
+      }
+
+      /* === Outro (registry: logo-outro pattern — glow bloom + orb + tagline) === */
+      #outro { display: grid; place-items: center; align-content: center; gap: 30px; text-align: center; z-index: 30; }
+      #outro .glow {
+        position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%);
+        width: 520px; height: 520px; border-radius: 50%; pointer-events: none; z-index: -1;
+        background: radial-gradient(circle, rgba(109, 74, 255, 0.4) 0%, rgba(15, 13, 24, 0) 68%);
+      }
+      #outro .orb { width: 104px; height: 104px; filter: drop-shadow(0 10px 40px rgba(109, 74, 255, 0.6)); }
+      #outro .tag {
+        font-size: 50px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; max-width: 62%;
+        color: #ece9f6;
+      }
+
+      /* === Vignette (registry: vignette) === */
+      #hf-vignette {
+        position: absolute; inset: 0; pointer-events: none; z-index: 90;
+        background: radial-gradient(
+          var(--vignette-shape, ellipse) at center,
+          rgba(15, 13, 24, 0) var(--vignette-size, 46%),
+          var(--vignette-color, rgba(8, 6, 16, 0.72)) var(--vignette-edge, 100%)
+        );
+      }
+
+      /* === Grain overlay (registry: grain-overlay — seek-driven, not CSS infinite) === */
+      #grain-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 100; opacity: 0.14; mix-blend-mode: soft-light; }
+      #grain-overlay .grain-texture {
+        position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      }
+
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="25" data-width="1920" data-height="1080">
+      <!-- WebGL shader background (deterministic, driven by hf-seek time) -->
+      <canvas id="bg" class="clip" data-start="0" data-duration="25" data-track-index="0" width="1920" height="1080"></canvas>
+
+      <!-- BODY: avatar full-bleed inside a single-card parallax-zoom grid (slow cinematic push).
+           #stage is a NON-timed wrapper (opacity owned by GSAP) so the framework can drive the
+           video directly — a data-start video must not be nested in another data-start element. -->
+      <div id="stage">
+        <div class="parallax-zoom-grid" id="pz-grid" style="--pz-focus-scale: 1.12; --pz-sibling-push: 0px; --pz-sibling-fade: 0;">
+          <div class="parallax-zoom-card" id="avatar-card" data-pz-focus="true" data-pz-row="0" data-pz-col="0">
+            <video id="avatar-video" class="clip" src="assets/avatar.mp4" muted playsinline data-start="2.5" data-media-start="0" data-track-index="1"></video>
+          </div>
+        </div>
+        <div id="wash"></div>
+        <div id="scrim"></div>
+      </div>
+      <audio id="avatar-audio" class="clip" src="assets/avatar.mp4" data-start="2.5" data-track-index="2"></audio>
+
+      <!-- visual layers (no data-*; opacity/transform owned by GSAP tweens, applied on seek) -->
+      <div id="title" class="layer">
+        <div class="title-wrap">
+          <div class="kicker" id="kicker">HeyGen × Stripe Projects</div>
+          <h1 id="title-text">Your AI spokesperson, on demand</h1>
+        </div>
+      </div>
+
+      <div id="cap-bar"><span id="cap-span"></span></div>
+      <div id="brandbar">heygen.com</div>
+
+      <div id="outro" class="layer">
+        <div class="glow" id="outro-glow"></div>
+        <img class="orb" id="outro-orb" alt="" />
+        <div class="tag" id="tagline-text"></div>
+      </div>
+
+      <!-- vignette + grain overlays (registry components) -->
+      <div id="hf-vignette"></div>
+      <div id="grain-overlay"><div class="grain-texture"></div></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const v = window.__hyperframes.getVariables();
+      const sec = (ms) => (Number(ms) || 0) / 1000;
+      const brand = v.brandColor || "#6d4aff";
+
+      // derive a lighter tint of the brand for accents (deterministic, no randomness)
+      function lighten(hex, amt) {
+        const h = hex.replace("#", "");
+        const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+        const mix = (c) => Math.round(c + (255 - c) * amt);
+        const to2 = (n) => n.toString(16).padStart(2, "0");
+        return "#" + to2(mix(r)) + to2(mix(g)) + to2(mix(b));
+      }
+      const brandLight = lighten(brand, 0.32);
+
+      const intro = sec(v.introDurationMs);
+      const speechStart = sec(v.speechStartMs);
+      const body = sec(v.bodyDurationMs);
+      const outroAt = speechStart + body; // outro begins right after the body, whatever its length
+
+      document.documentElement.style.setProperty("--brand", brand);
+      document.documentElement.style.setProperty("--brand-light", brandLight);
+      document.getElementById("title-text").textContent = v.title || "";
+      document.getElementById("tagline-text").textContent = v.tagline || "";
+      document.getElementById("outro-orb").src = "assets/heygen-orb.svg";
+
+      // ---- WebGL shader background (flowing brand-tinted gradient, seek-driven) ----
+      (function shader() {
+        const c = document.getElementById("bg");
+        const gl = c.getContext("webgl");
+        if (!gl) return;
+        const hex = brand.replace("#", "");
+        const br = parseInt(hex.slice(0, 2), 16) / 255, bgc = parseInt(hex.slice(2, 4), 16) / 255, bb = parseInt(hex.slice(4, 6), 16) / 255;
+        const vs = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
+        const fs =
+          "precision highp float;uniform float t;uniform vec2 r;uniform vec3 c;" +
+          "void main(){vec2 uv=gl_FragCoord.xy/r;float tt=t*0.14;" +
+          // layered sines for a slow flowing field
+          "float w=sin(uv.x*2.6+tt)+sin(uv.y*3.4-tt*1.2)+sin((uv.x+uv.y)*4.4+tt*0.6);" +
+          "float g=0.5+0.5*sin(w*0.85+tt);" +
+          // soft radial vignette baked into the field so edges stay deep
+          "float d=distance(uv,vec2(0.5,0.46));float vg=smoothstep(0.95,0.25,d);" +
+          "vec3 base=vec3(0.059,0.051,0.094);" +          // #0f0d18
+          "vec3 col=mix(base,c,g*0.55*vg);" +
+          "col+=c*pow(g,3.0)*0.22*vg;gl_FragColor=vec4(col,1.0);}";
+        function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
+        const prog = gl.createProgram();
+        gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs));
+        gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs));
+        gl.linkProgram(prog); gl.useProgram(prog);
+        const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+        const uT = gl.getUniformLocation(prog, "t"), uR = gl.getUniformLocation(prog, "r"), uC = gl.getUniformLocation(prog, "c");
+        window.__renderBg = (time) => {
+          gl.viewport(0, 0, c.width, c.height);
+          gl.uniform1f(uT, time); gl.uniform2f(uR, c.width, c.height); gl.uniform3f(uC, br, bgc, bb);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        };
+        window.__renderBg(0);
+      })();
+
+      // ---- Captions (phrase cues from HeyGen transcript, offset by speechStartMs) ----
+      const capSpan = document.getElementById("cap-span");
+      let cues = [];
+      fetch("assets/transcript.json").then((r) => r.json()).then((list) => {
+        cues = (Array.isArray(list) ? list : []).map((x) => ({
+          start: speechStart + (x.start || 0), end: speechStart + (x.end || 0), text: x.text || "",
+        }));
+      });
+
+      // ---- Timeline: intro → (blur crossfade) → body → (blur crossfade) → outro ----
+      const tl = gsap.timeline({ paused: true });
+
+      // hide downstream scenes at t=0 (set inside tl so it's deterministic on seek)
+      tl.set("#stage, #wash, #scrim, #cap-bar, #brandbar, #outro", { opacity: 0 }, 0);
+      tl.set("#title", { opacity: 1 }, 0);
+
+      // --- INTRO (entrance only; transition handles its exit) ---
+      // Headline animates opacity/translate ONLY — never blur/background-position on the
+      // clipped-text element (that ghosts it in headless render). The kicker carries the
+      // extra flourish (letter-spacing) since it's a normal-fill element.
+      tl.fromTo("#title .kicker", { opacity: 0, y: 26, letterSpacing: "0.5em" },
+        { opacity: 0.95, y: 0, letterSpacing: "0.32em", duration: 0.7, ease: "power3.out" }, 0.15);
+      tl.fromTo("#title h1", { opacity: 0, y: 48 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "expo.out" }, 0.3);
+
+      // --- TRANSITION 1: intro → body (crossfade; blur stays off the clipped-text subtree) ---
+      const t1 = intro - 0.25;
+      tl.to("#title", { opacity: 0, duration: 0.55, ease: "power2.in" }, t1);
+      tl.set("#title", { visibility: "hidden" }, t1 + 0.55); // deterministic kill
+      // body scene resolves out of blur as the intro dissolves
+      tl.fromTo("#stage", { opacity: 0, filter: "blur(16px)", scale: 1.03 },
+        { opacity: 1, filter: "blur(0px)", scale: 1, duration: 0.7, ease: "power2.out" }, t1 + 0.1);
+
+      // --- BODY (entrances; no exits — transition 2 handles the handoff) ---
+      tl.fromTo("#wash", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "sine.out" }, speechStart);
+      tl.fromTo("#scrim", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power1.out" }, speechStart + 0.05);
+      tl.fromTo("#brandbar", { opacity: 0, x: -28 },
+        { opacity: 1, x: 0, duration: 0.6, ease: "back.out(1.4)" }, speechStart + 0.15);
+      tl.fromTo("#cap-bar", { opacity: 0, y: 34, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "power3.out" }, speechStart + 0.25);
+
+      // slow cinematic parallax-zoom push across the whole body (registry: parallax-zoom)
+      tl.fromTo("#pz-grid", { "--pz-progress": 0 }, { "--pz-progress": 1, duration: body - 0.2, ease: "power1.inOut" }, speechStart);
+
+      // --- TRANSITION 2: body → outro (blur crossfade) ---
+      const t2 = outroAt - 0.3;
+      tl.to("#stage, #cap-bar, #brandbar", { opacity: 0, filter: "blur(12px)", duration: 0.6, ease: "power2.inOut" }, t2);
+      tl.set("#stage, #cap-bar, #brandbar", { visibility: "hidden" }, t2 + 0.6); // deterministic kill
+
+      // --- OUTRO (logo-outro pattern: glow bloom → orb → tagline) ---
+      tl.fromTo("#outro", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, outroAt);
+      tl.fromTo("#outro-glow", { opacity: 0, scale: 0.6 },
+        { opacity: 1, scale: 1.2, duration: 1.9, ease: "power2.out" }, outroAt + 0.05);
+      tl.fromTo("#outro .orb", { opacity: 0, scale: 0.7, y: 18 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: "back.out(1.6)" }, outroAt + 0.15);
+      tl.fromTo("#outro .tag", { opacity: 0, y: 26 },
+        { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, outroAt + 0.35);
+
+      // grain overlay: seek-driven step shimmer across the full 25s (replaces the
+      // component's CSS `infinite` animation, which is wall-clock and won't render on seek)
+      const GRAIN = [[0,0],[-5,-5],[-10,5],[5,-10],[-5,15],[-10,5],[15,0],[0,10],[-15,0],[10,5]];
+      const GRAIN_STEP = 0.18; // ~5.5 jitters/sec
+      const grainCount = Math.ceil(25 / GRAIN_STEP);
+      for (let i = 0; i < grainCount; i++) {
+        const p = GRAIN[i % GRAIN.length];
+        tl.set("#grain-overlay .grain-texture", { xPercent: p[0], yPercent: p[1] }, i * GRAIN_STEP);
+      }
+
+      window.__timelines["main"] = tl;
+
+      // ---- Per-frame hook: shader time + active caption ----
+      window.addEventListener("hf-seek", (e) => {
+        const now = e.detail.time;
+        if (window.__renderBg) window.__renderBg(now);
+        const active = cues.find((c) => now >= c.start && now < c.end);
+        capSpan.textContent = active ? active.text : "";
+      });
+    </script>
+  </body>
+</html>

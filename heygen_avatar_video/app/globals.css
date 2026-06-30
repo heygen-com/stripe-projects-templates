@@ -94,6 +94,8 @@ img { max-width: 100%; }
 .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
 .lib-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
 .lib-card video { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #15121f; display: block; }
+.lib-card[data-ar="9:16"] video, .lib-card[data-ar="9:16"] .lib-ph { aspect-ratio: 9 / 16; }
+.lib-card[data-ar="9:16"] video { object-fit: contain; background: #000; }
 .lib-card .meta { padding: 12px 14px 4px; }
 .lib-card .meta .t { display: block; font-size: 15px; font-weight: 650; color: var(--ink); }
 .lib-card .meta .sub2 { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
@@ -117,6 +119,13 @@ textarea { resize: vertical; min-height: 92px; line-height: 1.5; }
 input:focus, textarea:focus, button:focus-visible, .avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .pick-lab { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 8px; }
+.styles-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.style-opt { cursor: pointer; border: 1.5px solid var(--border-strong); background: var(--ground); border-radius: 11px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: border-color 0.12s, background 0.12s; }
+.style-opt:hover { border-color: var(--accent); }
+.style-opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-wash); box-shadow: 0 0 0 1px var(--accent) inset; }
+.style-opt .so-name { font-size: 13px; font-weight: 650; color: var(--ink); text-align: center; }
+.style-opt .so-ar { font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.style-desc { font-size: 12.5px; color: var(--muted); margin: 8px 0 18px; min-height: 2.4em; }
 .avatars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; margin-bottom: 18px; }
 .avatar { cursor: pointer; border: 1.5px solid var(--border-strong); background: var(--ground); border-radius: 12px; padding: 8px; position: relative; transition: border-color 0.12s, background 0.12s; }
 .avatar:hover { border-color: var(--accent); }
@@ -136,7 +145,11 @@ input:focus, textarea:focus, button:focus-visible, .avatar:focus-visible { outli
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .stage { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; position: relative; background: radial-gradient(120% 120% at 78% 30%, #2a2440, #15121f); border: 1px solid var(--border); display: grid; place-items: center; box-shadow: 0 20px 60px rgba(26, 23, 38, 0.12); }
+/* Vertical (social) result: reshape the player to 9:16 and cap its height so it stays a "big player"
+   without dominating the page. */
+.stage[data-ar="9:16"] { aspect-ratio: 9 / 16; max-width: min(100%, 360px); max-height: 78vh; margin-inline: auto; }
 .stage video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.stage[data-ar="9:16"] video { object-fit: cover; }
 .stage .placeholder { color: #8b84a8; font-size: 15px; }
 
 /* Gallery of previously generated videos (persisted on disk) */

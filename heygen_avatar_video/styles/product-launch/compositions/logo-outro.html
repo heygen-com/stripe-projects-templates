@@ -1,0 +1,187 @@
+<!-- hyperframes-registry-item: logo-outro (reskinned: HeyGen orb + tagline var, Studio Clean) -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0b1220;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="logo-outro"
+      data-composition-id="logo-outro"
+      data-width="1920"
+      data-height="1080"
+      data-start="0"
+      data-duration="6"
+      data-composition-variables='[
+        { "id": "tagline", "type": "string", "label": "Tagline", "default": "Start building →" },
+        { "id": "brandColor", "type": "color", "label": "Brand color", "default": "#2dd4bf" }
+      ]'
+    >
+      <div class="canvas">
+        <!-- Glow behind the orb -->
+        <div class="logo-glow" id="lo-glow"></div>
+
+        <!-- HeyGen orb -->
+        <div class="logo-container">
+          <img class="orb-img" id="lo-orb" alt="HeyGen" />
+        </div>
+
+        <div class="text-container">
+          <div class="tagline" id="lo-tagline">Start building &rarr;</div>
+          <div class="url-pill" id="lo-pill"><span class="url-text">heygen.studio</span></div>
+        </div>
+      </div>
+
+      <style>
+        #logo-outro .canvas {
+          width: 1920px;
+          height: 1080px;
+          background: #0b1220;
+          position: relative;
+          overflow: hidden;
+          font-family: "Inter", system-ui, sans-serif;
+        }
+        #logo-outro .canvas::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(60% 55% at 50% 42%, rgba(45, 212, 191, 0.1) 0%, rgba(11, 18, 32, 0) 70%);
+          pointer-events: none;
+        }
+        #logo-outro .logo-container {
+          position: absolute;
+          left: 50%;
+          top: 360px;
+          width: 188px;
+          height: 188px;
+          margin-left: -94px;
+          z-index: 2;
+        }
+        #logo-outro .orb-img {
+          width: 188px;
+          height: 188px;
+          display: block;
+          filter: drop-shadow(0 18px 60px rgba(45, 212, 191, 0.35));
+          opacity: 0;
+        }
+        #logo-outro .logo-glow {
+          position: absolute;
+          left: 50%;
+          top: 300px;
+          width: 460px;
+          height: 460px;
+          margin-left: -230px;
+          background: radial-gradient(circle, rgba(56, 189, 248, 0.28) 0%, rgba(11, 18, 32, 0) 70%);
+          border-radius: 50%;
+          opacity: 0;
+          pointer-events: none;
+          z-index: 1;
+        }
+        #logo-outro .text-container {
+          position: absolute;
+          top: 640px;
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          z-index: 3;
+        }
+        #logo-outro .tagline {
+          font-size: 64px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          color: #eef2f7;
+          opacity: 0;
+          margin-bottom: 36px;
+          text-align: center;
+          text-wrap: balance;
+          max-width: 70%;
+        }
+        #logo-outro .url-pill {
+          background: rgba(45, 212, 191, 0.1);
+          border: 1px solid rgba(45, 212, 191, 0.5);
+          border-radius: 100px;
+          padding: 12px 30px;
+          opacity: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #logo-outro .url-text {
+          font-size: 24px;
+          font-weight: 600;
+          color: #2dd4bf;
+          letter-spacing: 0.04em;
+        }
+      </style>
+
+      <script>
+        (function () {
+          window.__timelines = window.__timelines || {};
+          var hf = window.__hyperframes;
+          var v = hf && hf.getVariables ? hf.getVariables() : {};
+          var brand = v.brandColor || "#2dd4bf";
+          var S = '#logo-outro ';
+          var orb = document.getElementById("lo-orb");
+          if (orb) orb.src = "assets/heygen-orb.svg";
+          var tagEl = document.getElementById("lo-tagline");
+          if (tagEl && v.tagline) tagEl.textContent = v.tagline;
+          document.querySelectorAll(S + ".url-text").forEach(function (e) {
+            e.style.color = brand;
+          });
+
+          var tl = gsap.timeline({ paused: true });
+
+          // Orb rises + settles (entrance, scale + opacity in one tween)
+          tl.fromTo(
+            S + ".orb-img",
+            { opacity: 0, scale: 0.7, y: 30 },
+            { opacity: 1, scale: 1, y: 0, duration: 0.8, ease: "back.out(1.5)", overwrite: "auto" },
+            0.15,
+          );
+          // Glow bloom under the orb
+          tl.fromTo(
+            S + ".logo-glow",
+            { opacity: 0, scale: 0.6 },
+            { opacity: 1, scale: 1.15, duration: 0.7, ease: "power2.out", overwrite: "auto" },
+            0.3,
+          );
+          // Tagline + pill stagger up
+          tl.fromTo(
+            S + ".tagline",
+            { opacity: 0, y: 26, filter: "blur(10px)" },
+            { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.8, ease: "power3.out", overwrite: "auto" },
+            0.7,
+          );
+          tl.fromTo(
+            S + ".url-pill",
+            { opacity: 0, y: 16 },
+            { opacity: 1, y: 0, duration: 0.6, ease: "expo.out", overwrite: "auto" },
+            1.1,
+          );
+          // Gentle ambient float on the orb (seekable)
+          tl.to(S + ".orb-img", { y: "+=10", duration: 1.6, ease: "sine.inOut", repeat: 2, yoyo: true }, 1.4);
+
+          window.__timelines["logo-outro"] = tl;
+        })();
+      </script>
+    </div>
+  </body>
+</html>

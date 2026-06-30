@@ -1,0 +1,282 @@
+<!doctype html>
+<html
+  lang="en"
+  data-resolution="landscape"
+  data-composition-variables='[
+    { "id": "title", "type": "string", "label": "Title", "default": "Meet HeyGen Studio" },
+    { "id": "tagline", "type": "string", "label": "Tagline", "default": "Start building →" },
+    { "id": "brandColor", "type": "color", "label": "Brand color", "default": "#2dd4bf" },
+    { "id": "productImage", "type": "string", "label": "Product image", "default": "" },
+    { "id": "introDurationMs", "type": "number", "label": "Intro ms", "default": 2500 },
+    { "id": "bodyDurationMs", "type": "number", "label": "Body ms", "default": 10500 },
+    { "id": "outroDurationMs", "type": "number", "label": "Outro ms", "default": 2500 },
+    { "id": "speechStartMs", "type": "number", "label": "Speech start ms", "default": 2500 }
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0b1220; }
+      body { font-family: "Inter", system-ui, sans-serif; color: #eef2f7; }
+
+      /* deep slate-blue base wash + Studio Clean accent glows (radial, no full-screen linear) */
+      #bg-wash { position: absolute; inset: 0;
+        background:
+          radial-gradient(900px 700px at 50% 38%, rgba(45, 212, 191, 0.1) 0%, rgba(11, 18, 32, 0) 62%),
+          radial-gradient(760px 540px at 82% 78%, rgba(56, 189, 248, 0.08) 0%, rgba(11, 18, 32, 0) 60%),
+          #0b1220; }
+      #vignette { position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(72% 72% at 50% 46%, transparent 42%, rgba(0, 0, 0, 0.42) 100%); }
+      .layer { position: absolute; inset: 0; }
+
+      /* ── Intro: texture-masked product TITLE ── */
+      #title { display: grid; place-items: center; padding: 0 11%; text-align: center; }
+      #title .kicker { font-size: 26px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase;
+        color: var(--brand); margin-bottom: 26px; }
+      /* the headline fill is a bright Studio Clean gradient; texture-mask-text cuts the
+         masonry/metal contour through the letterforms (mask-image set via .hf-texture-* class) */
+      #title h1 { font-size: 150px; font-weight: 900; letter-spacing: -0.035em; line-height: 0.98;
+        text-wrap: balance;
+        background-image: linear-gradient(104deg, #eef2f7 0%, #2dd4bf 34%, #38bdf8 66%, #eef2f7 100%);
+        background-size: 200% 100%; -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 12px 48px rgba(45, 212, 191, 0.28)); }
+
+      /* ── Body: avatar SIDE presenter on the right (~30% width) ── */
+      #ring { position: absolute; right: 3.2%; top: 188px; width: 500px; height: 704px;
+        border-radius: 34px; pointer-events: none;
+        background: linear-gradient(150deg, var(--brand), transparent 58%); filter: blur(40px);
+        opacity: 0.45; z-index: 1; }
+      #card { position: absolute; right: 3.2%; top: 188px; width: 500px; height: 704px;
+        border-radius: 26px; overflow: hidden; background: rgba(238, 242, 247, 0.05);
+        border: 1px solid rgba(238, 242, 247, 0.16);
+        box-shadow: 0 40px 110px rgba(0, 0, 0, 0.55); z-index: 2; }
+      #card::after { content: ""; position: absolute; inset: 0; border-radius: 26px; pointer-events: none;
+        box-shadow: inset 0 1px 0 rgba(238, 242, 247, 0.28); }
+      #card video { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+      .pres-label { position: absolute; right: 3.2%; top: 916px; width: 500px; text-align: center;
+        font-size: 19px; font-weight: 600; letter-spacing: 0.04em; color: #c3ccda; z-index: 3; }
+
+      /* ── Caption bar (gradient-fill technique, themed) ── */
+      #captions { position: absolute; left: 5.5%; right: 32%; bottom: 8.5%; z-index: 5;
+        display: flex; align-items: flex-end; min-height: 1.3em; }
+      #cap-bar { display: inline-block; padding: 14px 26px; border-radius: 16px;
+        background: rgba(11, 19, 34, 0.62); border: 1px solid rgba(45, 212, 191, 0.26);
+        backdrop-filter: blur(3px); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4); }
+      #cap-span { font-size: 46px; font-weight: 800; line-height: 1.18; letter-spacing: -0.01em;
+        background-image: linear-gradient(90deg, #2dd4bf 0%, #38bdf8 42%, #eef2f7 42.5%, #eef2f7 100%);
+        background-size: 280% 100%; background-position: 100% 0;
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+        text-shadow: none; }
+
+      #brandbar { position: absolute; left: 5.5%; bottom: 4.4%; font-size: 20px; font-weight: 600;
+        color: rgba(238, 242, 247, 0.6); letter-spacing: 0.04em; z-index: 5; }
+
+      /* film grain — premium finish, soft-light, above everything */
+      #grain { position: absolute; inset: 0; pointer-events: none; z-index: 60; opacity: 0.1;
+        mix-blend-mode: soft-light;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        background-size: 180px 180px; }
+
+      /* transition overlay: a brand wipe that sweeps the title out and the showcase in */
+      #wipe { position: absolute; inset: 0; z-index: 40; pointer-events: none;
+        background: linear-gradient(100deg, rgba(45, 212, 191, 0) 0%, #2dd4bf 46%, #38bdf8 54%, rgba(56, 189, 248, 0) 100%);
+        transform: translateX(-120%); opacity: 0; }
+    </style>
+
+    <!-- texture-mask-text component CSS (pasted once; .hf-texture-* set mask-image) -->
+    <style>
+      .hf-texture-text {
+        color: #fff;
+        -webkit-mask-size: var(--mask-size, cover);
+        mask-size: var(--mask-size, cover);
+        -webkit-mask-position: var(--mask-position, center);
+        mask-position: var(--mask-position, center);
+        -webkit-mask-mode: luminance;
+        mask-mode: luminance;
+        filter: contrast(var(--mask-contrast, 1));
+      }
+      .hf-texture-concrete-047-a {
+        -webkit-mask-image: url("assets/texture-mask-text/masks/concrete-047-a.png");
+        mask-image: url("assets/texture-mask-text/masks/concrete-047-a.png");
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="25" data-width="1920" data-height="1080">
+      <!-- background -->
+      <div id="bg-wash" class="clip" data-start="0" data-duration="25" data-track-index="0"></div>
+      <div id="vignette" class="clip" data-start="0" data-duration="25" data-track-index="1"></div>
+
+      <!-- BODY: showcase device-frame sub-composition (browser frame + 3D reveal + parallax-zoom).
+           Avatar presenter + captions overlay on top of it. -->
+      <div
+        id="showcase-host"
+        class="clip"
+        data-composition-id="showcase"
+        data-composition-src="compositions/showcase.html"
+        data-start="2.5"
+        data-duration="10.5"
+        data-track-index="2"
+        data-width="1920"
+        data-height="1080"
+        data-variable-values='{}'
+        style="position: absolute; inset: 0; z-index: 2;"
+      ></div>
+
+      <!-- avatar media: opaque video shown muted in the side card; same file is the audio track -->
+      <div id="ring"></div>
+      <div id="card">
+        <video id="avatar-video" src="assets/avatar.mp4" muted playsinline data-start="2.5" data-media-start="0" data-track-index="3"></video>
+      </div>
+      <audio id="avatar-audio" src="assets/avatar.mp4" data-start="2.5" data-track-index="4"></audio>
+      <!-- overlays sit on top of the full-frame showcase device layer by design -->
+      <div class="pres-label" id="pres-label" data-layout-allow-overlap>Nova · AI spokesperson</div>
+
+      <!-- intro title (texture-masked) -->
+      <div id="title" class="layer" style="z-index: 30;">
+        <div>
+          <div class="kicker" id="kicker">HeyGen × Studio</div>
+          <h1 id="title-text" class="hf-texture-text hf-texture-concrete-047-a" style="--mask-contrast: 1.25;">Meet HeyGen Studio</h1>
+        </div>
+      </div>
+
+      <!-- caption bar -->
+      <div id="captions"><div id="cap-bar"><span id="cap-span"></span></div></div>
+      <div id="brandbar" data-layout-allow-overlap>heygen.studio</div>
+
+      <!-- OUTRO: orb + tagline CTA (logo-outro sub-composition) -->
+      <div
+        id="outro-host"
+        class="clip"
+        data-composition-id="logo-outro"
+        data-composition-src="compositions/logo-outro.html"
+        data-start="13.0"
+        data-duration="2.5"
+        data-track-index="5"
+        data-width="1920"
+        data-height="1080"
+        data-variable-values='{}'
+        style="position: absolute; inset: 0; z-index: 50;"
+      ></div>
+
+      <!-- transition wipe + grain -->
+      <div id="wipe"></div>
+      <div id="grain"></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const v = window.__hyperframes.getVariables();
+      const sec = (ms) => (Number(ms) || 0) / 1000;
+      const brand = v.brandColor || "#2dd4bf";
+      const intro = sec(v.introDurationMs);
+      const speechStart = sec(v.speechStartMs);
+      const body = sec(v.bodyDurationMs);
+      const outroAt = speechStart + body; // outro begins right after the body window
+
+      document.documentElement.style.setProperty("--brand", brand);
+      document.getElementById("title-text").textContent = v.title || "";
+      // brand-tint the kicker + caption accents to the resolved brandColor
+      document.getElementById("kicker").style.color = brand;
+
+      // per-instance variables passed down to the sub-compositions
+      document.getElementById("showcase-host").setAttribute(
+        "data-variable-values",
+        JSON.stringify({ title: v.title || "", brandColor: brand, productImage: v.productImage || "" }),
+      );
+      document.getElementById("outro-host").setAttribute(
+        "data-variable-values",
+        JSON.stringify({ tagline: v.tagline || "", brandColor: brand }),
+      );
+
+      // Schedule the hosted sub-comps on the SAME dynamic timing as the main timeline + the pipeline
+      // trim: the showcase spans the body window, the logo outro begins right after it. The markup's
+      // data-start/-duration are only defaults — fixed values would mistime the outro (overlap speech
+      // on long scripts, get trimmed away on short ones) for any speech length but the 10.5s default.
+      const outroDur = sec(v.outroDurationMs);
+      const showcaseHost = document.getElementById("showcase-host");
+      showcaseHost.setAttribute("data-start", String(speechStart));
+      showcaseHost.setAttribute("data-duration", String(body));
+      const outroHost = document.getElementById("outro-host");
+      outroHost.setAttribute("data-start", String(outroAt));
+      outroHost.setAttribute("data-duration", String(outroDur));
+
+      // ---- Captions: phrase cues from the transcript, offset by speechStart ----
+      const capSpan = document.getElementById("cap-span");
+      const capBar = document.getElementById("cap-bar");
+      let cues = [];
+      fetch("assets/transcript.json")
+        .then((r) => r.json())
+        .then((list) => {
+          cues = (Array.isArray(list) ? list : []).map((x) => ({
+            start: speechStart + (x.start || 0),
+            end: speechStart + (x.end || 0),
+            text: x.text || "",
+          }));
+        });
+
+      // ---- Master timeline (entrance-only per scene; transition handles the handoff) ----
+      const tl = gsap.timeline({ paused: true });
+
+      // hide body-scene overlays until speech; outro hidden until outroAt
+      tl.set("#card, #ring, #pres-label, #captions", { opacity: 0 }, 0);
+
+      // INTRO (entrances only — texture-masked title + kicker)
+      tl.fromTo("#kicker", { opacity: 0, y: 24, letterSpacing: "0.5em" },
+        { opacity: 1, y: 0, letterSpacing: "0.3em", duration: 0.7, ease: "power3.out" }, 0.18);
+      tl.fromTo("#title h1", { opacity: 0, y: 46, filter: "blur(20px)" },
+        { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.9, ease: "expo.out" }, 0.34);
+      // light sweeps across the gradient fill of the masked title
+      tl.fromTo("#title h1", { backgroundPositionX: "100%" },
+        { backgroundPositionX: "0%", duration: 1.9, ease: "power2.out" }, 0.34);
+
+      // TRANSITION into the showcase: brand wipe sweeps L→R right as intro ends.
+      // The title is NOT exit-animated by a fade; the wipe IS its exit (transition rule).
+      tl.set("#wipe", { opacity: 1 }, intro - 0.35);
+      tl.fromTo("#wipe", { x: "-120%" }, { x: "120%", duration: 0.7, ease: "power3.inOut" }, intro - 0.35);
+      tl.set("#title", { opacity: 0 }, intro); // title cleared behind the wipe (deterministic)
+      tl.set("#wipe", { opacity: 0 }, intro + 0.35);
+
+      // BODY entrances (every overlay element animates in)
+      tl.fromTo("#ring", { opacity: 0, x: 70 }, { opacity: 0.45, x: 0, duration: 0.7, ease: "power3.out" }, speechStart - 0.25);
+      tl.fromTo("#card", { opacity: 0, x: 80, scale: 0.96 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.75, ease: "expo.out" }, speechStart - 0.2);
+      tl.fromTo("#pres-label", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, speechStart + 0.2);
+      tl.to("#captions", { opacity: 1, duration: 0.3, ease: "power1.out" }, speechStart);
+      // gentle ambient float on the presenter card (seekable, single ambient motion)
+      tl.to("#card, #ring", { y: "+=12", duration: 2.4, ease: "sine.inOut", repeat: 3, yoyo: true }, speechStart + 0.4);
+
+      // OUTRO handoff — body overlays cleared as the outro sub-comp takes over.
+      // This is the wind-down; a crossfade is the right "this concludes" transition.
+      tl.to("#card, #ring, #pres-label, #captions, #brandbar", { opacity: 0, duration: 0.5, ease: "power2.in" }, outroAt - 0.25);
+      tl.set("#card, #ring, #pres-label, #captions, #brandbar", { opacity: 0 }, outroAt + 0.05);
+
+      // sentinel to hold the timeline to full duration
+      tl.set({}, {}, 24.9);
+
+      window.__timelines["main"] = tl;
+
+      // ---- Per-frame caption fill: animate the gradient sweep within the active cue ----
+      window.addEventListener("hf-seek", (e) => {
+        const now = e.detail.time;
+        const active = cues.find((c) => now >= c.start && now < c.end);
+        if (active) {
+          capBar.style.opacity = "1";
+          if (capSpan.textContent !== active.text) capSpan.textContent = active.text;
+          const dur = Math.max(0.001, active.end - active.start);
+          const p = Math.min(1, Math.max(0, (now - active.start) / dur));
+          // sweep background-position 100%→0% as the cue plays (gradient-fill technique)
+          capSpan.style.backgroundPositionX = (100 - p * 100).toFixed(2) + "%";
+        } else {
+          capBar.style.opacity = "0";
+          capSpan.textContent = "";
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generate } from "@/lib/pipeline";
 import { getAvatar, DEFAULT_AVATAR_ID } from "@/lib/avatars";
+import { getStyle } from "@/lib/styles";
 import { writeJob } from "@/lib/jobs";
 import { InsufficientCreditsError } from "@/lib/heygen";
 import { hasHeyGenKey, DEMO_URL } from "@/lib/config";
@@ -9,7 +10,7 @@ import { hasHeyGenKey, DEMO_URL } from "@/lib/config";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  let body: { title?: string; script?: string; avatarId?: string };
+  let body: { title?: string; script?: string; avatarId?: string; style?: string };
   try {
     body = await req.json();
   } catch {
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Script is too long (${script.length}/${SCRIPT_MAX} chars).` }, { status: 400 });
   }
   const avatar = getAvatar(body.avatarId ?? DEFAULT_AVATAR_ID);
+  const style = getStyle(body.style); // unknown/missing falls back to the default style
 
   // Zero-config demo mode: with no heygen/api provisioned yet (a fresh scaffold), don't error on the
   // headline action — return the bundled sample so the app immediately works. Provisioning the key
@@ -46,13 +48,15 @@ export async function POST(req: NextRequest) {
     avatar: avatar?.name ?? "HeyGen",
     status: "processing",
     createdAt: new Date().toISOString(),
+    style: style.id,
+    aspectRatio: style.aspectRatio,
   });
 
   // Fire-and-forget: the render keeps running after the client disconnects (refresh-safe), and the
   // job sidecar is updated on completion. NOTE: in-process background work is fine for a local
   // starter; a production deploy would hand this to a queue/worker (serverless freezes after the
   // response). The client polls GET /api/renders for status.
-  generate({ title, script, avatarId: body.avatarId }, jobId).catch(async (err) => {
+  generate({ title, script, avatarId: body.avatarId, style: style.id }, jobId).catch(async (err) => {
     const billing = err instanceof InsufficientCreditsError;
     await writeJob(jobId, {
       status: "error",

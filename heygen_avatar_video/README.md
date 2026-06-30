@@ -36,20 +36,30 @@ Generating one video runs three steps server-side (`lib/pipeline.ts`):
 |------|------|------|
 | 1. Generate avatar | HeyGen v3 API (`POST /v3/videos`, `output_format: mp4`) | **paid** (HeyGen credits) |
 | 2. Captions | HeyGen sidecar SRT → `hyperframes transcribe` (format import, no Whisper) | free, local |
-| 3. Render the composition | `hyperframes render` (avatar card + captions + WebGL shader motion) | free, local |
+| 3. Render the chosen style | `hyperframes render` (one of the styles below) | free, local |
 
-The HeyGen mp4 is opaque (keeps the avatar's own background) and carries the speech audio, and HeyGen returns a matching SRT. The
-composition shows the avatar in a framed card (muted video layer; the same file is the `<audio>`
-track), over a WebGL shader background, with caption cues from the SRT driven by HyperFrames' `hf-seek`. Generating spends credits ([pay-as-you-go pricing](https://developers.heygen.com/docs/pricing));
-the local steps don't.
+The HeyGen mp4 is opaque (keeps the avatar's own background) and carries the speech audio, and HeyGen
+returns a matching SRT. You pick a **style** per video; the avatar (muted video layer; the same file
+is the `<audio>` track) and SRT captions (driven by HyperFrames' `hf-seek`) are composed into it.
+Generating spends credits ([pay-as-you-go pricing](https://developers.heygen.com/docs/pricing)); the
+local steps don't.
+
+**Styles** (pick one in the UI; registered in `lib/styles.ts`):
+
+| Style | Aspect | Look |
+|-------|--------|------|
+| Product launch | 16:9 | Browser-style product UI with floating chips + avatar in a card. Default. |
+| Social | 9:16 | Full-bleed vertical avatar with kinetic captions — for Reels, Shorts, TikTok. |
+| Spokesperson | 16:9 | Cinematic close-up presenter over a clean caption bar. |
 
 ## Make it yours
 
 - **Avatars:** `lib/avatars.ts` — three validated public digital-twin looks. Swap in others from
   `heygen avatar looks list --ownership public --avatar-type digital_twin` (must support Avatar IV/V).
-- **The video itself:** `composition/` is a HyperFrames project. `cd composition && npx hyperframes preview`
-  to edit the title card, captions, motion, and transitions live. (See `AGENTS.md` for the
-  render-safety rules before editing.)
+- **The video styles:** each lives in `styles/<id>/` as a HyperFrames project. `cd styles/<id> && npx
+  hyperframes preview` to edit a style's title card, captions, motion, and transitions live, or add a
+  new style (drop a project in `styles/` + an entry in `lib/styles.ts`). See `AGENTS.md` for the
+  render-safety rules and the shared variable/asset contract before editing.
 - **The whole codebase** is described for AI tools in [`AGENTS.md`](./AGENTS.md).
 
 ### Turn it into your product (with AI)

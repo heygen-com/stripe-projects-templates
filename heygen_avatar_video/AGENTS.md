@@ -20,9 +20,10 @@ free "production studio" that wraps it. The HeyGen API key is provisioned via **
    alpha-matted, so the shader would show through the avatar card. (`lib/heygen.ts`)
 2. **Captions (free, local)** — `hyperframes transcribe captions.srt` → a list-shaped
    `transcript.json` (cues). No speech-to-text model; HeyGen's own timings.
-3. **Render (free, local)** — stage `avatar.mp4` + `transcript.json` into `composition/assets/`,
-   write scalar variables (title/brand/timing) to a JSON file, run `hyperframes render
-   --variables-file`, then `ffmpeg-static` trims to the real length.
+3. **Render (free, local)** — stage `avatar.mp4` + `transcript.json` into the chosen style's
+   `styles/<id>/assets/`, write scalar variables (title/brand/timing) to a JSON file, run
+   `hyperframes render --variables-file`, then `ffmpeg-static` trims to the real length. The
+   `style` comes from the request and maps to a HyperFrames project under `styles/` (see below).
 
 **Demo vs live (`lib/config.ts`):** with no `HEYGEN_API_KEY`, `POST /api/generate` skips the paid
 pipeline and returns the bundled `public/demo.mp4` labeled as a demo. Provisioning the key flips to
@@ -39,35 +40,48 @@ live. So the app works with zero config.
 | `lib/pipeline.ts` | The generation pipeline (above). |
 | `lib/heygen.ts` | HeyGen v3 REST client + typed errors (`InsufficientCreditsError` → 402). |
 | `lib/avatars.ts` | The 3 shipped public avatars (id + voice + thumbnail). |
-| `lib/jobs.ts` | On-disk job records (`public/renders/<id>.json`) — status, list, delete. |
-| `composition/` | The HyperFrames project (fixed template; see below). |
+| `lib/styles.ts` | The composition **style registry** (id, label, aspect ratio, accent) — see below. |
+| `lib/jobs.ts` | On-disk job records (`public/renders/<id>.json`) — status, list, delete, style/aspectRatio. |
+| `styles/<id>/` | One self-contained HyperFrames project per style (see below). |
 | `scripts/preflight.mjs` | Pre-`dev` dependency check. |
 
-## The composition (`composition/index.html`)
+## The styles (`styles/<id>/`)
 
-A **fixed** HyperFrames template — its structure doesn't change per video. Per generation it's
-parametrized with **scalar variables** (`getVariables()`: title, tagline, brandColor, timing) and
-**staged assets** (`assets/avatar.mp4`, `assets/transcript.json`). Scenes: shader-background intro
-title card → avatar in a glassy card + word-synced captions → outro.
+Each style is a **fixed** HyperFrames project — its structure doesn't change per video. The app
+ships three (registered in `lib/styles.ts`):
+
+| id | aspect | look |
+|----|--------|------|
+| `product-launch` | 16:9 | Browser-style product UI with floating chips + avatar in a card. **Default.** |
+| `social` | 9:16 | Full-bleed vertical avatar with punchy kinetic captions (Reels/Shorts/TikTok). |
+| `spokesperson` | 16:9 | Cinematic close-up presenter over a clean caption bar. |
+
+All three share one **contract**, which is what lets the pipeline render any of them the same way:
+they read the same scalar variables (`getVariables()`: `title`, `tagline`, `brandColor`,
+`speechStartMs`, `introDurationMs`, `bodyDurationMs`, `outroDurationMs`) and the same staged assets
+(`assets/avatar.mp4`, `assets/transcript.json`). The pipeline passes each style its registry
+`accent`/`tagline` so it renders in its own palette.
 
 **Render-safety rules (important):**
 - All visual motion is **GSAP tweens** (applied on seek) or driven by the **`hf-seek` event** — never
-  GSAP `onUpdate` (doesn't fire during render seeking). Captions + the WebGL shader use `hf-seek`.
+  GSAP `onUpdate` (doesn't fire during render seeking). Captions + shaders use `hf-seek`.
 - Variables are **scalars only** (string/number/color/boolean/enum). Media + caption cues go through
   `assets/` files, not variables.
 - Video layers must be `muted` (HyperFrames mutes them); the speech is a separate `<audio>` track.
-- The composition root is a fixed 25s, trimmed after render — so the **script is capped at 280 chars**
+  Do **not** put `crossorigin` on the avatar `<video>`/`<audio>` (breaks Studio preview).
+- Each style's root is a fixed 25s, trimmed after render — so the **script is capped at 280 chars**
   (UI + server) to stay within the body window.
 
 ## Common changes
 
+- **Add a style:** drop a new HyperFrames project in `styles/<new-id>/` that reads the shared
+  variable/asset contract above, then add an entry to `STYLES` in `lib/styles.ts` (id, label,
+  aspectRatio, accent, tagline). The UI picker and pipeline pick it up automatically.
 - **Swap/add avatars:** edit `lib/avatars.ts`. Must be **digital-twin or photo-avatar** public looks
   (studio avatars are Avatar III and rejected by `/v3/videos`). Find them with
   `heygen avatar looks list --ownership public --avatar-type digital_twin`. Each needs a `voice_id`.
-- **Change the video look:** edit `composition/index.html` — `cd composition && npx hyperframes
+- **Change a style's look:** edit `styles/<id>/index.html` — `cd styles/<id> && npx hyperframes
   preview` to iterate live; `npx hyperframes lint` before committing. Keep the render-safety rules.
-- **Different output (e.g. 9:16):** the composition `data-resolution` + the avatar `aspect_ratio` in
-  the `POST /v3/videos` body in `lib/heygen.ts`.
 - **Production:** jobs are in-process + on-disk (fine locally); a real deploy needs a queue/worker +
   DB/object storage, and rendering needs headless Chrome + FFmpeg (not serverless). See README.
 
@@ -76,8 +90,8 @@ title card → avatar in a glassy card + word-synced captions → outro.
 ```bash
 pnpm install          # runs native builds (ffmpeg-static, onnxruntime)
 pnpm dev              # preflight + Next dev at :3000
-cd composition && npx hyperframes preview   # iterate on the composition
-cd composition && npx hyperframes lint      # validate before committing
+cd styles/<id> && npx hyperframes preview   # iterate on a style
+cd styles/<id> && npx hyperframes lint      # validate before committing
 ```
 
 Requires **Node ≥ 22**. FFmpeg is bundled (`ffmpeg-static`); first render downloads a headless Chrome.

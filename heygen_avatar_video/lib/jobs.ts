@@ -14,6 +14,8 @@ export type Job = {
   avatar: string;
   status: JobStatus;
   createdAt: string;
+  style?: string; // composition style id (see lib/styles.ts)
+  aspectRatio?: string; // "16:9" | "9:16" — lets the player/Library size the video without the registry
   url?: string;
   error?: string;
   billing?: boolean;

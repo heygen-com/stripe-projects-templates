@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AVATARS, DEFAULT_AVATAR_ID } from "@/lib/avatars";
+import { STYLES, DEFAULT_STYLE } from "@/lib/styles";
 
 const DEFAULT_TITLE = "Meet Nova";
 const DEFAULT_SCRIPT =
@@ -14,6 +15,7 @@ const STEPS = ["Generating avatar (HeyGen API)", "Fetching captions", "Rendering
 type Status = "processing" | "done" | "error";
 type Video = {
   id: string; title: string; avatar: string; status: Status; createdAt: string;
+  style?: string; aspectRatio?: string;
   url?: string; error?: string; billing?: boolean; pricingUrl?: string;
 };
 type Account = { firstName: string; email: string; balance: string | null };
@@ -24,10 +26,12 @@ export default function Home() {
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [avatarId, setAvatarId] = useState(DEFAULT_AVATAR_ID);
+  const [styleId, setStyleId] = useState<string>(DEFAULT_STYLE);
   const [videos, setVideos] = useState<Video[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null); // result slot = YOUR video only
+  const [resultAr, setResultAr] = useState<string | null>(null); // aspect ratio of the shown result
   const [sampleOpen, setSampleOpen] = useState(false); // sample plays in a modal, never the result slot
   const [barOpen, setBarOpen] = useState(true);
   const [demoNote, setDemoNote] = useState<string | null>(null); // set when Generate runs in demo mode (no key)
@@ -65,9 +69,14 @@ export default function Home() {
   useEffect(() => {
     if (active?.status === "done" && active.url) {
       setVideoUrl(active.url);
+      setResultAr(active.aspectRatio ?? "16:9");
       setDemoNote(null);
     }
   }, [active]);
+
+  const selectedStyle = useMemo(() => STYLES.find((s) => s.id === styleId) ?? STYLES[0], [styleId]);
+  // The stage shape: a finished result uses its own ratio; before that, preview the selected style's.
+  const stageAr = videoUrl ? resultAr ?? "16:9" : selectedStyle.aspectRatio;
 
   const running = active?.status === "processing";
   const errored = active?.status === "error" ? active : null;
@@ -79,13 +88,14 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, script, avatarId }),
+        body: JSON.stringify({ title, script, avatarId, style: styleId }),
       });
       const data = await res.json();
       if (!res.ok) return;
       if (data.demo) {
         // No key yet — show the bundled sample as the result, clearly labeled.
         setVideoUrl(data.url);
+        setResultAr("16:9"); // the bundled demo is 16:9
         setDemoNote(data.message);
         return;
       }
@@ -169,7 +179,7 @@ export default function Home() {
         {tab === "create" && (
           <div className="create">
             <section className="player-col">
-              <div className="stage">
+              <div className="stage" data-ar={stageAr}>
                 {running ? (
                   <div className="generating">
                     <div className="spinner" />
@@ -235,6 +245,24 @@ export default function Home() {
                   {script.length}/{SCRIPT_MAX}
                 </span>
               </label>
+              <span className="pick-lab">Style</span>
+              <div className="styles-pick" role="group" aria-label="Choose a composition style">
+                {STYLES.map((s) => (
+                  <button
+                    type="button"
+                    key={s.id}
+                    className="style-opt"
+                    aria-pressed={styleId === s.id}
+                    onClick={() => setStyleId(s.id)}
+                    title={s.description}
+                  >
+                    <span className="so-name">{s.label}</span>
+                    <span className="so-ar">{s.aspectRatio}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="style-desc">{selectedStyle.description}</p>
+
               <span className="pick-lab">Avatar</span>
               <div className="avatars" role="group" aria-label="Choose an avatar">
                 {AVATARS.map((a) => (
@@ -289,7 +317,7 @@ export default function Home() {
                 </div>
               )}
               {videos.map((v) => (
-                  <div className="lib-card" key={v.id} data-status={v.status}>
+                  <div className="lib-card" key={v.id} data-status={v.status} data-ar={v.aspectRatio ?? "16:9"}>
                     {v.status === "done" && v.url ? (
                       <video src={v.url} controls preload="metadata" playsInline />
                     ) : v.status === "processing" ? (

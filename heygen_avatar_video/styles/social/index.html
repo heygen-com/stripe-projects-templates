@@ -1,0 +1,409 @@
+<!doctype html>
+<html
+  lang="en"
+  data-resolution="portrait"
+  data-composition-variables='[
+    { "id": "title", "type": "string", "label": "Title", "default": "No camera. No crew." },
+    { "id": "tagline", "type": "string", "label": "Tagline", "default": "@heygen" },
+    { "id": "brandColor", "type": "color", "label": "Brand color", "default": "#22d3ee" },
+    { "id": "introDurationMs", "type": "number", "label": "Intro ms", "default": 2500 },
+    { "id": "bodyDurationMs", "type": "number", "label": "Body ms", "default": 10500 },
+    { "id": "outroDurationMs", "type": "number", "label": "Outro ms", "default": 2500 },
+    { "id": "speechStartMs", "type": "number", "label": "Speech start ms", "default": 2500 }
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Gabarito:wght@600;700;800;900&display=block"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0a0a12; }
+      body { font-family: "Gabarito", system-ui, sans-serif; color: #ffffff; }
+
+      /* ---- Avatar: full-bleed portrait, crop biased to top so the head isn't cut ---- */
+      #stage { position: absolute; inset: 0; overflow: hidden; }
+      #avatar-wrap { position: absolute; inset: 0; transform-origin: 50% 38%; will-change: transform; }
+      #avatar-video { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; display: block; }
+      /* legibility scrim: dark base + brand wash from the bottom where captions live (radial/solid, no full-screen linear band) */
+      #scrim { position: absolute; inset: 0; pointer-events: none;
+        background:
+          radial-gradient(120% 55% at 50% 6%, rgba(10,10,18,0.62) 0%, rgba(10,10,18,0) 46%),
+          radial-gradient(140% 60% at 50% 104%, rgba(10,10,18,0.92) 0%, rgba(10,10,18,0.0) 58%); }
+      /* brand vignette edges */
+      #edgeglow { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0.5;
+        background:
+          radial-gradient(90% 50% at 0% 100%, color-mix(in srgb, var(--magenta) 40%, transparent), transparent 60%),
+          radial-gradient(90% 50% at 100% 0%, color-mix(in srgb, var(--brand) 36%, transparent), transparent 60%); }
+
+      /* ---- HOOK: title slam over the silent intro ---- */
+      #hook { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 0 80px; z-index: 30; }
+      #hook .kicker { font-family: "Gabarito", sans-serif; font-size: 30px; font-weight: 800; letter-spacing: 0.34em;
+        text-transform: uppercase; color: var(--brand); margin-bottom: 30px; opacity: 0;
+        text-shadow: 0 0 22px color-mix(in srgb, var(--brand) 55%, transparent); }
+      #hook .title-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+      #hook .tline { font-family: "Anton", sans-serif; font-weight: 400; font-size: 132px; line-height: 0.92;
+        letter-spacing: 0.005em; text-transform: uppercase; color: #ffffff; opacity: 0;
+        text-shadow: 0 10px 60px rgba(0,0,0,0.55); position: relative; }
+      .shimmer-sweep-target { position: relative; display: inline-block; }
+      .shimmer-sweep-target .shimmer-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+        background: linear-gradient(var(--shimmer-angle, 115deg),
+          rgba(255,255,255,0) 0%,
+          rgba(255,255,255,0) calc(var(--shimmer-pos, -20%) - var(--shimmer-width, 22%) / 2),
+          var(--shimmer-color, rgba(255,255,255,0.72)) var(--shimmer-pos, -20%),
+          rgba(255,255,255,0) calc(var(--shimmer-pos, -20%) + var(--shimmer-width, 22%) / 2),
+          rgba(255,255,255,0) 100%);
+        mix-blend-mode: overlay; }
+
+      /* ---- CAPTIONS: the hero. lower-third, big slamming word groups ---- */
+      #cap-layer { position: absolute; left: 0; right: 0; bottom: 300px; height: 420px; z-index: 40;
+        display: flex; align-items: center; justify-content: center; pointer-events: none; }
+      #cap-group { position: relative; width: 960px; display: flex; flex-direction: column; align-items: center;
+        gap: 14px; will-change: transform, opacity; opacity: 0; }
+      #cap-line { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
+        column-gap: 44px; row-gap: 4px; width: 100%; }
+      .cap-word { font-family: "Gabarito", sans-serif; font-weight: 900; line-height: 1.0;
+        letter-spacing: -0.01em; text-transform: uppercase; color: #ffffff;
+        -webkit-text-stroke: 3px #0a0a12; paint-order: stroke fill;
+        text-shadow: 0 5px 18px rgba(0,0,0,0.7); display: inline-block; will-change: transform, opacity; }
+
+      /* ---- ENDCARD: neutral follow card (no platform marks) ---- */
+      #endcard { position: absolute; inset: 0; display: grid; place-items: center; z-index: 50; opacity: 0;
+        background:
+          radial-gradient(70% 50% at 50% 42%, color-mix(in srgb, var(--brand) 14%, #0a0a12) 0%, #0a0a12 60%),
+          radial-gradient(120% 60% at 50% 108%, color-mix(in srgb, var(--magenta) 22%, transparent), transparent 60%); }
+      #endcard .ec-inner { display: flex; flex-direction: column; align-items: center; gap: 56px; text-align: center; }
+      #endcard .ec-orb { width: 150px; height: 150px; opacity: 0; filter: drop-shadow(0 0 40px color-mix(in srgb, var(--brand) 60%, transparent)); }
+      #follow-pill { display: inline-flex; align-items: center; gap: 22px; padding: 30px 64px; border-radius: 999px;
+        background: linear-gradient(120deg, var(--brand), var(--magenta)); color: #07070d;
+        font-family: "Gabarito", sans-serif; font-weight: 900; font-size: 60px; letter-spacing: 0.01em;
+        box-shadow: 0 24px 70px color-mix(in srgb, var(--brand) 30%, transparent), 0 0 0 6px rgba(255,255,255,0.06);
+        position: relative; overflow: hidden; opacity: 0; }
+      #follow-pill .plus { font-size: 64px; font-weight: 900; line-height: 0.8; }
+      #handle { font-family: "Gabarito", sans-serif; font-weight: 800; font-size: 56px; color: #ffffff;
+        letter-spacing: 0.01em; opacity: 0; text-shadow: 0 2px 16px rgba(0,0,0,0.5); }
+
+      /* ---- transition overlays (CSS, seek-driven) ---- */
+      #whip { position: absolute; inset: 0; z-index: 70; pointer-events: none; opacity: 0;
+        background: linear-gradient(100deg, rgba(10,10,18,0) 0%, color-mix(in srgb, var(--brand) 45%, #0a0a12) 50%, rgba(10,10,18,0) 100%);
+        filter: blur(2px); }
+      #leak { position: absolute; inset: 0; z-index: 71; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+        background:
+          radial-gradient(60% 80% at 116% 16%, color-mix(in srgb, var(--brand) 90%, #fff) 0%, color-mix(in srgb, var(--magenta) 70%, transparent) 34%, rgba(0,0,0,0) 70%); }
+
+      /* film grain — premium finish */
+      #grain { position: absolute; inset: 0; pointer-events: none; z-index: 80; opacity: 0.12; mix-blend-mode: soft-light;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        background-size: 180px 180px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="25" data-width="1080" data-height="1920">
+      <!-- avatar media: opaque video shown muted; same file is the separate audio track.
+           #stage / #avatar-wrap are NON-timed wrappers (framework drives the <video> directly). -->
+      <div id="stage">
+        <!-- parallax-unzoom open scales the avatar past the frame on purpose; #stage clips it -->
+        <div id="avatar-wrap" data-layout-allow-overflow>
+          <video id="avatar-video" class="clip" src="assets/avatar.mp4" muted playsinline
+            data-start="2.5" data-media-start="0" data-track-index="0"></video>
+        </div>
+        <div id="scrim"></div>
+        <div id="edgeglow"></div>
+      </div>
+      <audio id="avatar-audio" class="clip" src="assets/avatar.mp4" data-start="2.5" data-track-index="1"></audio>
+
+      <!-- HOOK -->
+      <div id="hook">
+        <div class="title-stack">
+          <div class="kicker" id="kicker">HeyGen · AI Video</div>
+          <div id="title-lines"></div>
+        </div>
+      </div>
+
+      <!-- CAPTIONS (hero) -->
+      <div id="cap-layer">
+        <div id="cap-group">
+          <div id="cap-line"></div>
+        </div>
+      </div>
+
+      <!-- ENDCARD -->
+      <div id="endcard">
+        <div class="ec-inner">
+          <img class="ec-orb" id="ec-orb" alt="" />
+          <div id="follow-pill" class="shimmer-sweep-target"><span class="plus">＋</span><span>Follow</span></div>
+          <div id="handle"></div>
+        </div>
+      </div>
+
+      <!-- transition overlays -->
+      <div id="whip"></div>
+      <div id="leak"></div>
+      <div id="grain"></div>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        const v = window.__hyperframes.getVariables();
+        const sec = (ms) => (Number(ms) || 0) / 1000;
+        const brand = v.brandColor || "#22d3ee";
+        const magenta = "#f72585";
+        const intro = sec(v.introDurationMs);
+        const speechStart = sec(v.speechStartMs);
+        const body = sec(v.bodyDurationMs);
+        const outroAt = speechStart + body; // outro begins right after speech, whatever its length
+
+        document.documentElement.style.setProperty("--brand", brand);
+        document.documentElement.style.setProperty("--magenta", magenta);
+        document.getElementById("ec-orb").src = "assets/heygen-orb.svg";
+        document.getElementById("handle").textContent = v.tagline || "@heygen";
+
+        // ---- HOOK title: split into display lines (each word/line slams in) ----
+        const titleText = (v.title || "No camera. No crew.").trim();
+        // group into short display lines so each is a punchy slab (no <br> in content text — built as discrete nodes)
+        const titleLines = titleText.split(/\s*\.\s*/).filter(Boolean).map((s) => s.trim() + ".");
+        const linesHost = document.getElementById("title-lines");
+        titleLines.forEach((ln, i) => {
+          const d = document.createElement("div");
+          d.className = "tline shimmer-sweep-target";
+          d.id = "tline-" + i;
+          d.textContent = ln;
+          // lines slam in from opposite sides and momentarily cross during the entrance — layering is intentional
+          d.setAttribute("data-layout-allow-overlap", "");
+          linesHost.appendChild(d);
+        });
+        // inject shimmer masks deterministically
+        document.querySelectorAll(".shimmer-sweep-target").forEach((el) => {
+          const m = document.createElement("div");
+          m.className = "shimmer-mask";
+          el.appendChild(m);
+        });
+
+        // ===== CAPTIONS: built from transcript.json at runtime, offset by speechStart =====
+        // Energy = high/social. Kinetic-slam entrance (alternating modes) + accent pop on keywords.
+        // Driven per-frame from hf-seek using deterministic time math (render-safe: no wallclock, no onUpdate).
+        // (No emoji glyphs: the headless render env has no color-emoji font and would render tofu boxes.)
+        const capGroup = document.getElementById("cap-group");
+        const capLine = document.getElementById("cap-line");
+
+        const STOPWORDS = new Set(["a","an","the","and","or","but","i","im","your","you","it","its","to","of","in","on","with","ill","and"]);
+        // content words that carry the message get a brand/magenta accent pop
+        const KEYWORDS = new Set(["camera","crew","video","branded","script","look","spokesperson","ai","minutes","nova","turn","pick","type"]);
+        const ACCENTS = [brand, magenta];
+
+        // group raw cues into ≤3-word hero chunks; high energy = quick turnover
+        function buildGroups(cues) {
+          const MAXW = 3;
+          const groups = [];
+          cues.forEach((cue) => {
+            // drop pure-punctuation tokens (e.g. a lone em dash) so they never become a caption word
+            const words = (cue.text || "").trim().split(/\s+/)
+              .filter((w) => /[a-z0-9]/i.test(w));
+            if (!words.length) return;
+            const span = Math.max(0.001, (cue.end || 0) - (cue.start || 0));
+            // distribute word times evenly across the cue
+            const per = span / words.length;
+            let timed = words.map((w, i) => ({
+              raw: w.replace(/^[—–\-]+/, ""), // strip any leading dash glued to a word
+              clean: w.toLowerCase().replace(/[^a-z']/g, "").replace(/'/g, ""),
+              start: cue.start + i * per,
+              end: cue.start + (i + 1) * per,
+            }));
+            for (let i = 0; i < timed.length; i += MAXW) {
+              const chunk = timed.slice(i, i + MAXW);
+              groups.push({
+                words: chunk,
+                start: chunk[0].start,
+                end: chunk[chunk.length - 1].end,
+              });
+            }
+          });
+          // assign per-word accent deterministically
+          groups.forEach((g, gi) => {
+            g.words.forEach((w, wi) => {
+              const isKey = !STOPWORDS.has(w.clean) &&
+                (KEYWORDS.has(w.clean) || (w.raw === w.raw.toUpperCase() && w.raw.replace(/[^A-Z]/g, "").length > 1));
+              w.key = isKey;
+              w.color = isKey ? ACCENTS[(gi + wi) % ACCENTS.length] : "#ffffff";
+            });
+            g.mode = gi % 4; // slam entrance mode
+          });
+          return groups;
+        }
+
+        let GROUPS = [];
+        let activeGi = -1;
+
+        function fitCaption(words) {
+          // size words to fit the 960px line at weight 900 Gabarito; large for mobile.
+          // join with a wide spacer so the measured width accounts for the 44px inter-word gaps.
+          const joined = words.map((w) => w.raw.toUpperCase()).join("  ");
+          let size = 132;
+          if (window.__hyperframes && window.__hyperframes.fitTextFontSize) {
+            const r = window.__hyperframes.fitTextFontSize(joined, {
+              maxWidth: 900, fontFamily: "Gabarito", fontWeight: 900, baseFontSize: 132, minFontSize: 64, step: 2,
+            });
+            size = r.fontSize;
+          }
+          return Math.max(64, Math.min(132, size));
+        }
+
+        function renderGroup(gi) {
+          const g = GROUPS[gi];
+          capLine.innerHTML = "";
+          const size = fitCaption(g.words);
+          g.words.forEach((w, wi) => {
+            const span = document.createElement("span");
+            span.className = "cap-word";
+            span.id = "cw-" + wi;
+            span.textContent = w.raw.toUpperCase();
+            span.style.color = w.color;
+            span.style.fontSize = size + "px";
+            capLine.appendChild(span);
+          });
+        }
+
+        // easing helpers (deterministic, pure functions of progress)
+        const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+        const backOut = (x, s) => { s = s || 1.7; const t = x - 1; return 1 + (s + 1) * t * t * t + s * t * t; };
+        const expoOut = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
+        const powIn = (x) => x * x;
+
+        fetch("assets/transcript.json")
+          .then((r) => r.json())
+          .then((list) => {
+            const cues = (Array.isArray(list) ? list : []).map((x) => ({
+              start: speechStart + (Number(x.start) || 0),
+              end: speechStart + (Number(x.end) || 0),
+              text: x.text || "",
+            }));
+            GROUPS = buildGroups(cues);
+          })
+          .catch(() => { GROUPS = []; });
+
+        // ================= structural timeline (synchronous, seekable) =================
+        const tl = gsap.timeline({ paused: true });
+        tl.set("#cap-layer, #endcard, #leak, #whip", { opacity: 0 });
+
+        // -- HOOK: parallax-unzoom open (avatar starts pushed-in big, settles) + title slam --
+        // single transform tween on the wrap (avoids stacking transforms on the video element)
+        tl.fromTo("#avatar-wrap",
+          { scale: 1.5, y: -40 },
+          { scale: 1.04, y: 0, duration: 1.6, ease: "expo.out" }, 0.1);
+        tl.fromTo("#kicker", { opacity: 0, y: 30, letterSpacing: "0.5em" },
+          { opacity: 1, y: 0, letterSpacing: "0.34em", duration: 0.6, ease: "power3.out" }, 0.2);
+        // each title line slams in from alternating directions
+        titleLines.forEach((_, i) => {
+          const from = i % 2 === 0
+            ? { opacity: 0, x: -260, skewX: 8 }
+            : { opacity: 0, x: 260, skewX: -8 };
+          tl.fromTo("#tline-" + i, from,
+            { opacity: 1, x: 0, skewX: 0, duration: 0.34, ease: "back.out(1.9)" }, 0.45 + i * 0.16);
+        });
+        // shimmer sweep across the title (seek-driven CSS var)
+        tl.fromTo(".title-stack .shimmer-sweep-target",
+          { "--shimmer-pos": "-25%" }, { "--shimmer-pos": "125%", duration: 1.1, ease: "power2.inOut", stagger: 0.12 }, 1.0);
+
+        // -- WHIP-PAN transition hook -> body (fast, brand-tinted streak; CSS, seek-driven) --
+        const whipAt = intro - 0.28;
+        tl.set("#whip", { opacity: 0, x: "-100%" }, whipAt - 0.001);
+        tl.to("#whip", { opacity: 0.95, duration: 0.14, ease: "power2.in" }, whipAt);
+        tl.fromTo("#whip", { x: "-100%" }, { x: "100%", duration: 0.32, ease: "power4.inOut" }, whipAt);
+        tl.to("#whip", { opacity: 0, duration: 0.12, ease: "power2.out" }, whipAt + 0.22);
+        tl.set("#whip", { opacity: 0 }, whipAt + 0.34);
+        // hook content rides out under the whip (NOT an early exit — it's the transition covering the swap)
+        tl.to("#hook", { opacity: 0, duration: 0.18, ease: "power2.in" }, whipAt + 0.04);
+        tl.set("#hook", { opacity: 0, visibility: "hidden" }, whipAt + 0.24);
+
+        // -- BODY: captions become visible right at speechStart --
+        tl.to("#cap-layer", { opacity: 1, duration: 0.3, ease: "power2.out" }, speechStart - 0.1);
+        // gentle ambient float on the avatar through the body (seekable, finite repeats)
+        const floatCycles = Math.max(1, Math.ceil(body / 2.6));
+        tl.to("#avatar-wrap", { y: "+=16", duration: 2.6, ease: "sine.inOut", repeat: floatCycles, yoyo: true }, speechStart);
+
+        // -- LIGHT-LEAK transition body -> endcard (warm/bright bloom; CSS, seek-driven) --
+        const leakAt = outroAt - 0.34;
+        tl.set("#leak", { opacity: 0, scale: 0.8 }, leakAt - 0.001);
+        tl.to("#leak", { opacity: 0.95, scale: 1.25, duration: 0.34, ease: "power2.in" }, leakAt);
+        tl.to("#leak", { opacity: 0, scale: 1.6, duration: 0.5, ease: "power2.out" }, leakAt + 0.34);
+        tl.set("#leak", { opacity: 0 }, leakAt + 0.84);
+        tl.to("#cap-layer", { opacity: 0, duration: 0.2, ease: "power2.in" }, leakAt + 0.05);
+        tl.set("#cap-layer", { opacity: 0 }, leakAt + 0.26);
+        // avatar dims under the leak so the endcard reads
+        tl.to("#avatar-wrap", { opacity: 0.28, scale: 1.1, duration: 0.5, ease: "power2.inOut" }, leakAt + 0.1);
+
+        // -- ENDCARD: neutral follow card (fades up under the leak peak so there's no black gap) --
+        tl.to("#endcard", { opacity: 1, duration: 0.36, ease: "power2.out" }, leakAt + 0.18);
+        tl.fromTo("#ec-orb", { opacity: 0, scale: 0.6, y: 20 },
+          { opacity: 1, scale: 1, y: 0, duration: 0.55, ease: "back.out(1.7)" }, outroAt - 0.05);
+        tl.fromTo("#follow-pill", { opacity: 0, scale: 0.7 },
+          { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2.0)" }, outroAt + 0.12);
+        tl.fromTo("#handle", { opacity: 0, y: 26 },
+          { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, outroAt + 0.3);
+        // shimmer sweep across the follow pill (seek-driven)
+        tl.fromTo("#follow-pill",
+          { "--shimmer-pos": "-25%" }, { "--shimmer-pos": "125%", duration: 1.0, ease: "power2.inOut" }, outroAt + 0.8);
+        // final-scene gentle hold-out: subtle pill breathe (allowed: this is the last scene)
+        tl.to("#follow-pill", { scale: 1.04, duration: 1.0, ease: "sine.inOut", yoyo: true, repeat: 1 }, outroAt + 1.0);
+
+        window.__timelines["main"] = tl;
+
+        // ============ per-frame caption animation (hf-seek; deterministic) ============
+        window.addEventListener("hf-seek", (e) => {
+          const now = e.detail.time;
+          if (!GROUPS.length) return;
+          // only animate captions during the body window
+          if (now < speechStart - 0.15 || now > outroAt) {
+            if (activeGi !== -1) { activeGi = -1; }
+            return;
+          }
+          let gi = -1;
+          for (let i = 0; i < GROUPS.length; i++) {
+            const g = GROUPS[i];
+            if (now >= g.start && now < g.end + 0.12) { gi = i; break; }
+          }
+          if (gi === -1) {
+            // between groups: keep group hidden
+            capGroup.style.opacity = "0";
+            return;
+          }
+          if (gi !== activeGi) { renderGroup(gi); activeGi = gi; }
+          const g = GROUPS[gi];
+          const dur = Math.max(0.001, g.end - g.start);
+          const local = now - g.start; // seconds into the group
+          const enter = clamp01(local / 0.18); // 0.18s slam-in
+          const exitWin = 0.1;
+          const exit = clamp01((local - (dur)) / exitWin); // after end -> fade
+          // group container slam (mode-based) + pop
+          let gx = 0, gy = 0, gs = 1, grot = 0, op = 1;
+          const e1 = backOut(enter, 1.7);
+          if (g.mode === 0) { gy = -120 * (1 - e1); op = enter; }
+          else if (g.mode === 1) { gx = -300 * (1 - expoOut(enter)); op = enter; }
+          else if (g.mode === 2) { gx = 300 * (1 - expoOut(enter)); op = enter; }
+          else { gs = 0.55 + 0.45 * backOut(enter, 2.2); op = enter; }
+          // exit (within this group's tail)
+          if (exit > 0) { op = 1 - exit; gs = gs * (1 - 0.18 * exit); }
+          capGroup.style.opacity = String(op);
+          capGroup.style.transform =
+            "translate(" + gx.toFixed(2) + "px," + gy.toFixed(2) + "px) scale(" + gs.toFixed(3) + ") rotate(" + grot + "deg)";
+          // per-word stagger pop within the group (keyword words scale a touch bigger)
+          const words = capLine.children;
+          for (let wi = 0; wi < words.length; wi++) {
+            const wStart = (wi * 0.06);
+            const wp = clamp01((local - wStart) / 0.16);
+            const wb = backOut(wp, g.words[wi] && g.words[wi].key ? 2.4 : 1.7);
+            const ws = (g.words[wi] && g.words[wi].key ? 1.08 : 1.0) * (0.6 + 0.4 * wb);
+            const wy = 40 * (1 - expoOut(wp));
+            words[wi].style.opacity = String(exit > 0 ? 1 - exit : wp);
+            words[wi].style.transform = "translateY(" + wy.toFixed(1) + "px) scale(" + ws.toFixed(3) + ")";
+          }
+        });
+      </script>
+    </div>
+  </body>
+</html>
