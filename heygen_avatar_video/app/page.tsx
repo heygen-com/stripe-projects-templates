@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AVATARS, DEFAULT_AVATAR_ID } from "@/lib/avatars";
+import { AVATARS, DEFAULT_AVATAR_ID, getAvatar } from "@/lib/avatars";
 import { STYLES, DEFAULT_STYLE } from "@/lib/styles";
 
-const DEFAULT_TITLE = "Meet Nova";
-const DEFAULT_SCRIPT =
-  "Hi, I'm Nova — your AI spokesperson. Type a script, pick a look, and I'll turn it into a branded video in minutes. No camera, no crew.";
 const SCRIPT_MAX = 280; // keeps speech under the composition's ~20s body window (no truncation)
-const SAMPLE = { url: "/demo.mp4", title: "Sample · Meet Nova", avatar: "Melina" }; // bundled free example
+// Title + script default to the selected avatar's name ("Meet Eric" / "Hi, I'm Eric, …"); picking an
+// avatar (or a style, which pre-selects its avatar) retunes them — unless the user edited the field.
+const defaultsFor = (name: string) => ({
+  title: `Meet ${name}`,
+  script: `Hi, I'm ${name}, your AI spokesperson. Type a script, pick a look, and I'll turn it into a branded video in minutes. No camera, no crew.`,
+});
+const INITIAL = defaultsFor(AVATARS[0].name);
+const SAMPLE = { url: "/demo.mp4", title: "Demo video", avatar: "Made with HeyGen + HyperFrames" }; // bundled free example
 
 const STEPS = ["Generating avatar (HeyGen API)", "Fetching captions", "Rendering composition (HyperFrames)"];
 
@@ -23,10 +27,12 @@ type Tab = "create" | "library";
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("create");
-  const [title, setTitle] = useState(DEFAULT_TITLE);
-  const [script, setScript] = useState(DEFAULT_SCRIPT);
+  const [title, setTitle] = useState(INITIAL.title);
+  const [script, setScript] = useState(INITIAL.script);
   const [avatarId, setAvatarId] = useState(DEFAULT_AVATAR_ID);
   const [styleId, setStyleId] = useState<string>(DEFAULT_STYLE);
+  const [touchedTitle, setTouchedTitle] = useState(false); // don't clobber a user-typed title/script
+  const [touchedScript, setTouchedScript] = useState(false);
   const [videos, setVideos] = useState<Video[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -77,6 +83,22 @@ export default function Home() {
   const selectedStyle = useMemo(() => STYLES.find((s) => s.id === styleId) ?? STYLES[0], [styleId]);
   // The stage shape: a finished result uses its own ratio; before that, preview the selected style's.
   const stageAr = videoUrl ? resultAr ?? "16:9" : selectedStyle.aspectRatio;
+
+  // Selecting an avatar retunes title + script to its name (unless the user already typed their own).
+  function selectAvatar(id: string) {
+    setAvatarId(id);
+    const name = getAvatar(id)?.name;
+    if (!name) return;
+    const d = defaultsFor(name);
+    if (!touchedTitle) setTitle(d.title);
+    if (!touchedScript) setScript(d.script);
+  }
+  // Selecting a style pre-selects its fitting avatar (which in turn retunes the title/script).
+  function selectStyle(id: string) {
+    setStyleId(id);
+    const st = STYLES.find((s) => s.id === id);
+    if (st && getAvatar(st.defaultAvatarId)) selectAvatar(st.defaultAvatarId);
+  }
 
   const running = active?.status === "processing";
   const errored = active?.status === "error" ? active : null;
@@ -230,7 +252,7 @@ export default function Home() {
               <h2>New video</h2>
               <label className="fld">
                 <span className="lab">Title</span>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
+                <input type="text" value={title} onChange={(e) => { setTitle(e.target.value); setTouchedTitle(true); }} maxLength={80} />
               </label>
               <label className="fld">
                 <span className="lab">
@@ -238,7 +260,7 @@ export default function Home() {
                 </span>
                 <textarea
                   value={script}
-                  onChange={(e) => setScript(e.target.value.slice(0, SCRIPT_MAX))}
+                  onChange={(e) => { setScript(e.target.value.slice(0, SCRIPT_MAX)); setTouchedScript(true); }}
                   maxLength={SCRIPT_MAX}
                 />
                 <span className={`counter ${script.length > SCRIPT_MAX - 30 ? "near" : ""}`}>
@@ -253,7 +275,7 @@ export default function Home() {
                     key={s.id}
                     className="style-opt"
                     aria-pressed={styleId === s.id}
-                    onClick={() => setStyleId(s.id)}
+                    onClick={() => selectStyle(s.id)}
                     title={s.description}
                   >
                     <span className="so-name">{s.label}</span>
@@ -271,7 +293,7 @@ export default function Home() {
                     key={a.id}
                     className="avatar"
                     aria-pressed={avatarId === a.id}
-                    onClick={() => setAvatarId(a.id)}
+                    onClick={() => selectAvatar(a.id)}
                   >
                     <img className="thumb" src={a.thumbnailUrl} alt={a.name} />
                     <span className="chk">✓</span>

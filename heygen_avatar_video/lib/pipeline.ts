@@ -169,7 +169,7 @@ export async function generate(
   await writeJob(jobId, { status: "done", url });
 
   // Drop the per-job working dir; leave styles/<id>/assets/ in place (it holds the latest render's
-  // staged inputs, overwriting the shipped Melina sample — fine for a local scaffold).
+  // staged inputs, overwriting the shipped sample, fine for a local scaffold).
   await rm(work, { recursive: true, force: true }).catch(() => {});
   return { videoPath: out, publicUrl: url };
 }

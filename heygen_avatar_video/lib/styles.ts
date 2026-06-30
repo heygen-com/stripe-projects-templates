@@ -2,6 +2,8 @@
 // project under styles/<id>/. They share the same asset + variable contract (the pipeline stages
 // avatar.mp4 + transcript.json and passes the scalar vars below), so adding a style is: drop a new
 // HyperFrames project in styles/<id>/ that reads those vars, then add an entry here.
+import { AVATARS } from "./avatars";
+
 export type StyleId = "product-launch" | "social" | "spokesperson";
 export type AspectRatio = "16:9" | "9:16";
 
@@ -14,7 +16,13 @@ export type VideoStyle = {
   // variables so each style renders in its own palette (overridable later from the UI).
   accent: string;
   tagline: string;
+  // The avatar that best fits this style; selecting the style pre-selects it (still overridable).
+  defaultAvatarId: string;
 };
+
+// Resolve by name so the default survives an id change in avatars.ts; falls back to the first avatar
+// if that name was removed.
+const avatarIdByName = (name: string): string => AVATARS.find((a) => a.name === name)?.id ?? AVATARS[0].id;
 
 export const STYLES: VideoStyle[] = [
   {
@@ -24,6 +32,7 @@ export const STYLES: VideoStyle[] = [
     aspectRatio: "16:9",
     accent: "#2dd4bf",
     tagline: "Built with HeyGen · Stripe Projects",
+    defaultAvatarId: avatarIdByName("Eric"),
   },
   {
     id: "social",
@@ -32,6 +41,7 @@ export const STYLES: VideoStyle[] = [
     aspectRatio: "9:16",
     accent: "#22d3ee",
     tagline: "@heygen",
+    defaultAvatarId: avatarIdByName("Valeria"),
   },
   {
     id: "spokesperson",
@@ -40,6 +50,7 @@ export const STYLES: VideoStyle[] = [
     aspectRatio: "16:9",
     accent: "#6d4aff",
     tagline: "Built with HeyGen · Stripe Projects",
+    defaultAvatarId: avatarIdByName("Zain"),
   },
 ];
 
