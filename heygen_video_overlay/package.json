@@ -9,9 +9,9 @@
   "scripts": {
     "preflight": "node scripts/preflight.mjs",
     "predev": "node scripts/preflight.mjs",
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "NODE_OPTIONS=--no-experimental-webstorage next dev",
+    "build": "NODE_OPTIONS=--no-experimental-webstorage next build",
+    "start": "NODE_OPTIONS=--no-experimental-webstorage next start"
   },
   "dependencies": {
     "next": "15.3.1",
