@@ -73,6 +73,23 @@ function trim(input: string, output: string, seconds: number): Promise<void> {
   });
 }
 
+// HeyGen's v3 mp4 ships a sparse GOP (~one keyframe every 5s). HyperFrames seek-renders frame by
+// frame, and seeking to a non-keyframe paints the prior keyframe — so the avatar visibly FREEZES
+// for seconds at a time under the overlays. Re-encode with a dense keyframe interval (every 12
+// frames, ~0.5s) so every seeked frame decodes exactly. Audio is re-muxed unchanged.
+function reencodeDenseKeyframes(input: string, output: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!ffmpegStatic) return reject(new Error("ffmpeg-static missing"));
+    const p = spawn(
+      ffmpegStatic,
+      ["-y", "-i", input, "-c:v", "libx264", "-crf", "18", "-g", "12", "-keyint_min", "12", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-c:a", "aac", output],
+      { stdio: "inherit" },
+    );
+    p.on("error", reject);
+    p.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg keyframe re-encode exited ${code}`))));
+  });
+}
+
 export type GenerateInput = { title: string; script: string; avatarId?: string; style?: string };
 export type GenerateResult = { videoPath: string; publicUrl: string };
 
@@ -124,7 +141,8 @@ export async function generate(
   await withRenderLock(style.id, async () => {
     const assets = path.join(compDir, "assets");
     await mkdir(assets, { recursive: true });
-    await copyFile(avatarFile, path.join(assets, "avatar.mp4"));
+    // Re-encode (not copy) so the avatar is densely keyframed — otherwise it freezes on seek-render.
+    await reencodeDenseKeyframes(avatarFile, path.join(assets, "avatar.mp4"));
     await copyFile(path.join(work, "transcript.json"), path.join(assets, "transcript.json"));
 
     const vars = {
