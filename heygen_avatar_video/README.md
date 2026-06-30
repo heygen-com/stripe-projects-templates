@@ -34,11 +34,11 @@ Generating one video runs three steps server-side (`lib/pipeline.ts`):
 
 | Step | Tool | Cost |
 |------|------|------|
-| 1. Generate avatar | HeyGen v3 API (`POST /v3/videos`, `output_format: webm`) | **paid** (HeyGen credits) |
+| 1. Generate avatar | HeyGen v3 API (`POST /v3/videos`, `output_format: mp4`) | **paid** (HeyGen credits) |
 | 2. Captions | HeyGen sidecar SRT → `hyperframes transcribe` (format import, no Whisper) | free, local |
 | 3. Render the composition | `hyperframes render` (avatar card + captions + WebGL shader motion) | free, local |
 
-The HeyGen webm is opaque and carries the speech audio, and HeyGen returns a matching SRT. The
+The HeyGen mp4 is opaque (keeps the avatar's own background) and carries the speech audio, and HeyGen returns a matching SRT. The
 composition shows the avatar in a framed card (muted video layer; the same file is the `<audio>`
 track), over a WebGL shader background, with caption cues from the SRT driven by HyperFrames' `hf-seek`. Generating spends credits ([pay-as-you-go pricing](https://developers.heygen.com/docs/pricing));
 the local steps don't.

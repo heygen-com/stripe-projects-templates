@@ -1,5 +1,5 @@
 // Orchestrates one generation end to end:
-//   HeyGen v3 render (opaque webm + audio + sidecar SRT) → import SRT for captions
+//   HeyGen v3 render (opaque mp4 + audio + sidecar SRT) → import SRT for captions
 //   → HyperFrames render of the final composition → ffmpeg trim.
 // Everything after the HeyGen call is free and local. The opaque avatar plays (muted) in a card
 // and the same file is the <audio> track.
@@ -82,11 +82,12 @@ export async function generate(
 
   const work = path.join(ROOT, "work", jobId);
   await mkdir(work, { recursive: true });
-  const avatarWebm = path.join(work, "avatar.webm");
+  const avatarFile = path.join(work, "avatar.mp4");
   const captionsSrt = path.join(work, "captions.srt");
 
-  // 1. HeyGen avatar (paid) — opaque webm carrying the speech audio + a sidecar SRT. We present it
-  //    in a framed card (no background removal), so the opaque render is used as-is.
+  // 1. HeyGen avatar (paid) — opaque MP4 carrying the speech audio + a sidecar SRT. MP4 (not webm)
+  //    so the avatar keeps its own background; webm output is alpha-matted and would show the
+  //    composition shader through the card. We present the opaque render as-is in a framed card.
   onStep?.("avatar");
   const { videoId } = await createAvatarVideo({
     avatarId: avatar.id,
@@ -94,7 +95,7 @@ export async function generate(
     script: input.script,
   });
   const { videoUrl, subtitleUrl } = await waitForVideo(videoId);
-  await download(videoUrl, avatarWebm);
+  await download(videoUrl, avatarFile);
 
   // 2. Captions (free) — import HeyGen's SRT (HeyGen's own timings; no Whisper). `transcribe` on an
   //    .srt is a pure format conversion to transcript.json (a list of {text,start,end,id} cues).
@@ -107,7 +108,7 @@ export async function generate(
 
   // 3. Stage assets + render. HyperFrames variables are scalars only (string/number/color/...), so
   //    media + caption cues go through files in composition/assets/ while text/timing go through
-  //    --variables-file. The card shows avatar.webm muted; the same file is the <audio> track.
+  //    --variables-file. The card shows avatar.mp4 muted; the same file is the <audio> track.
   //    composition/assets/ is a SHARED slot, so the stage→render is serialized (renderLock) to keep
   //    concurrent jobs from clobbering each other (the paid HeyGen step above still runs in parallel).
   onStep?.("render");
@@ -115,7 +116,7 @@ export async function generate(
   await withRenderLock(async () => {
     const assets = path.join(COMPOSITION_DIR, "assets");
     await mkdir(assets, { recursive: true });
-    await copyFile(avatarWebm, path.join(assets, "avatar.webm"));
+    await copyFile(avatarFile, path.join(assets, "avatar.mp4"));
     await copyFile(path.join(work, "transcript.json"), path.join(assets, "transcript.json"));
 
     const vars = {

@@ -62,8 +62,10 @@ export async function createAvatarVideo(opts: {
       avatar_id: opts.avatarId,
       voice_id: opts.voiceId,
       script: opts.script,
-      // Opaque webm that carries the speech audio; shown as-is in the composition's avatar card.
-      output_format: "webm",
+      // MP4 (not webm): webm output is alpha-matted (transparent background), which would let the
+      // composition's shader bleed through the avatar card. MP4 can't carry alpha, so HeyGen
+      // composites the avatar on its own background => opaque, framed presenter in the card.
+      output_format: "mp4",
       // Sidecar SRT (no `style` => not burned in). We import it for caption timings instead of
       // running Whisper locally — HeyGen's own timings, zero extra dependency.
       caption: { file_format: "srt" },

@@ -1,7 +1,7 @@
 # composition/ — the HyperFrames project
 
 This is the **fixed** HyperFrames template the app renders for every video (`index.html`). The app
-stages `assets/avatar.webm` + `assets/transcript.json` and passes scalar variables, then runs
+stages `assets/avatar.mp4` + `assets/transcript.json` and passes scalar variables, then runs
 `hyperframes render`. For the big picture (the HeyGen→render pipeline, where this fits), read the
 template's top-level [`../AGENTS.md`](../AGENTS.md).
 

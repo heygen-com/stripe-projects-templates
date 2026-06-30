@@ -15,11 +15,12 @@ free "production studio" that wraps it. The HeyGen API key is provisioned via **
 `lib/pipeline.ts` orchestrates one generation, all server-side:
 
 1. **HeyGen v3 REST (paid)** — `POST /v3/videos` `{ type:"avatar", avatar_id, voice_id, script,
-   output_format:"webm", caption:{file_format:"srt"} }`; poll `GET /v3/videos/{id}`; download the
-   opaque webm (carries the speech audio) + the sidecar **SRT**. (`lib/heygen.ts`)
+   output_format:"mp4", caption:{file_format:"srt"} }`; poll `GET /v3/videos/{id}`; download the
+   opaque mp4 (carries the speech audio) + the sidecar **SRT**. MP4, not webm: webm output is
+   alpha-matted, so the shader would show through the avatar card. (`lib/heygen.ts`)
 2. **Captions (free, local)** — `hyperframes transcribe captions.srt` → a list-shaped
    `transcript.json` (cues). No speech-to-text model; HeyGen's own timings.
-3. **Render (free, local)** — stage `avatar.webm` + `transcript.json` into `composition/assets/`,
+3. **Render (free, local)** — stage `avatar.mp4` + `transcript.json` into `composition/assets/`,
    write scalar variables (title/brand/timing) to a JSON file, run `hyperframes render
    --variables-file`, then `ffmpeg-static` trims to the real length.
 
@@ -46,7 +47,7 @@ live. So the app works with zero config.
 
 A **fixed** HyperFrames template — its structure doesn't change per video. Per generation it's
 parametrized with **scalar variables** (`getVariables()`: title, tagline, brandColor, timing) and
-**staged assets** (`assets/avatar.webm`, `assets/transcript.json`). Scenes: shader-background intro
+**staged assets** (`assets/avatar.mp4`, `assets/transcript.json`). Scenes: shader-background intro
 title card → avatar in a glassy card + word-synced captions → outro.
 
 **Render-safety rules (important):**
