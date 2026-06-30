@@ -29,9 +29,7 @@
       /* avatar cutout sits in the right third; video is muted, audio is a separate element */
       #avatar { position: absolute; right: 5%; bottom: 0; height: 90%; }
       #avatar video { height: 100%; width: auto; }
-      #captions { position: absolute; left: 7%; bottom: 9%; max-width: 52%; display: flex; flex-wrap: wrap; gap: 8px 10px; }
-      #captions .w { font-size: 40px; font-weight: 600; color: rgba(255,255,255,0.55); text-shadow: 0 2px 12px rgba(0,0,0,0.5); transition: color 0.12s; }
-      #captions .w.on { color: #fff; }
+      #captions { position: absolute; left: 7%; bottom: 9%; max-width: 52%; font-size: 42px; font-weight: 700; line-height: 1.25; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,0.6); }
       #lower-third { position: absolute; left: 7%; bottom: 4%; font-size: 22px; font-weight: 600; color: var(--brand); }
       #outro .tag { font-size: 44px; font-weight: 700; color: #fff; }
     </style>
@@ -74,30 +72,30 @@
       document.getElementById("tagline-text").textContent = v.tagline || "";
       document.getElementById("lower-third").textContent = v.title || "";
 
-      // Captions from the staged transcript. Word times are relative to the speech media, so they
-      // render at speechStart + word.start (R7-NB-001). Build spans up front; highlight by playhead.
+      // Captions = HeyGen's SRT cues (phrase-level), imported to transcript.json as a list of
+      // {text,start,end}. Cue times are relative to the speech media, so they render at
+      // speechStart + cue.start (R7-NB-001). Show the active cue by playhead.
       const capEl = document.getElementById("captions");
-      let words = [];
+      let cues = [];
       fetch("assets/transcript.json")
         .then((r) => r.json())
-        .then((t) => {
-          words = (t.words || []).map((w) => {
-            const span = document.createElement("span");
-            span.className = "w";
-            span.textContent = w.word ?? w.text ?? "";
-            capEl.appendChild(span);
-            return { start: speechStart + (w.start || 0), end: speechStart + (w.end || 0), span };
-          });
+        .then((list) => {
+          cues = (Array.isArray(list) ? list : []).map((c) => ({
+            start: speechStart + (c.start || 0),
+            end: speechStart + (c.end || 0),
+            text: c.text || "",
+          }));
         });
 
       const tl = gsap.timeline({ paused: true });
       tl.from("#title-card .t", { opacity: 0, y: -40, duration: 0.6, ease: "power3.out" }, 0.2);
       tl.from("#avatar", { opacity: 0, x: 60, duration: 0.5, ease: "power2.out" }, speechStart - 0.2);
       tl.from("#outro .tag", { opacity: 0, scale: 0.9, duration: 0.6, ease: "power2.out" }, 10.6);
-      // Drive caption highlight from the playhead (HyperFrames seeks this timeline per frame).
+      // Drive the active caption from the playhead (HyperFrames seeks this timeline per frame).
       tl.eventCallback("onUpdate", () => {
         const now = tl.time();
-        for (const w of words) w.span.classList.toggle("on", now >= w.start && now < w.end);
+        const active = cues.find((c) => now >= c.start && now < c.end);
+        capEl.textContent = active ? active.text : "";
       });
       window.__timelines["main"] = tl;
     </script>

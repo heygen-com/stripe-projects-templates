@@ -65,6 +65,9 @@ export async function createAvatarVideo(opts: {
       // Opaque webm that carries the speech audio; we matte it to a transparent cutout locally
       // (these public avatars aren't matting-trained, so remove_background:true wouldn't help).
       output_format: "webm",
+      // Sidecar SRT (no `style` => not burned in). We import it for caption timings instead of
+      // running Whisper locally — HeyGen's own timings, zero extra dependency.
+      caption: { file_format: "srt" },
     }),
   });
   const json = await res.json().catch(() => ({}));
@@ -77,11 +80,11 @@ export async function createAvatarVideo(opts: {
   return { videoId };
 }
 
-// Poll until the render completes, then return the signed download URL.
+// Poll until the render completes, then return the signed download URLs (video + sidecar SRT).
 export async function waitForVideo(
   videoId: string,
   { timeoutMs = 10 * 60_000, intervalMs = 8_000 } = {},
-): Promise<{ videoUrl: string }> {
+): Promise<{ videoUrl: string; subtitleUrl?: string }> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const res = await fetch(`${API_BASE}/v3/videos/${videoId}`, {
@@ -93,7 +96,7 @@ export async function waitForVideo(
     if (["completed", "success", "done"].includes(status)) {
       const videoUrl = data?.video_url || data?.url;
       if (!videoUrl) throw new HeyGenError("Completed but no video_url", "bad_response");
-      return { videoUrl };
+      return { videoUrl, subtitleUrl: data?.subtitle_url };
     }
     if (["failed", "error"].includes(status)) {
       const msg = data?.error || data?.message || "HeyGen render failed";

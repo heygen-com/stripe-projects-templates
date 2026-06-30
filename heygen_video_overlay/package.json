@@ -24,5 +24,14 @@
     "ffmpeg-static": "5.2.0",
     "hyperframes": "0.7.20",
     "typescript": "5.8.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "ffmpeg-static",
+      "onnxruntime-node",
+      "sharp",
+      "esbuild",
+      "protobufjs"
+    ]
   }
 }
