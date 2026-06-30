@@ -122,10 +122,22 @@ export async function generate(
   // no trailing dead air. Re-encode (clips are short) for a frame-accurate cut.
   await trim(rendered, path.join(ROOT, out), vars.durationMs / 1000);
 
+  // Persist a metadata sidecar so generated videos survive a page refresh and show up in the
+  // gallery (the mp4 itself is already on disk under public/renders/). A real product would store
+  // these in a DB + object storage keyed to the user; on-disk JSON is the right level for a starter.
+  const meta = {
+    id: jobId,
+    title: input.title || "Untitled",
+    avatar: avatar.name,
+    createdAt: new Date().toISOString(),
+    url: `/renders/${jobId}.mp4`,
+  };
+  await writeFile(path.join(ROOT, "public", "renders", `${jobId}.json`), JSON.stringify(meta));
+
   // Drop the per-job working dir; leave composition/assets/ in place (it holds the latest render's
   // staged inputs, overwriting the shipped Melina sample — fine for a local scaffold).
   await rm(work, { recursive: true, force: true }).catch(() => {});
-  return { videoPath: out, publicUrl: `/renders/${jobId}.mp4` };
+  return { videoPath: out, publicUrl: meta.url };
 }
 
 // transcript.json (from SRT import) is a list of cues with second-based times; speech length = last cue end.
