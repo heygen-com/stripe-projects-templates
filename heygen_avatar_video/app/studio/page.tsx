@@ -12,7 +12,13 @@ const defaultsFor = (name: string) => ({
   script: `Hi, I'm ${name}, your AI spokesperson. Type a script, pick a look, and I'll turn it into a branded video in minutes. No camera, no crew.`,
 });
 const INITIAL = defaultsFor(AVATARS[0].name);
-const SAMPLE = { url: "/demo.mp4", title: "Demo video", avatar: "Made with HeyGen + HyperFrames" }; // bundled free example
+// Bundled examples (public/demos/), one per style — pinned in the Library so a fresh scaffold shows
+// all three looks before the user has rendered anything.
+const SAMPLES = [
+  { url: "/demos/product-launch.mp4", label: "Product launch", ar: "16:9" },
+  { url: "/demos/social.mp4", label: "Social", ar: "9:16" },
+  { url: "/demos/spokesperson.mp4", label: "Spokesperson", ar: "16:9" },
+];
 
 const STEPS = ["Generating avatar (HeyGen API)", "Fetching captions", "Rendering composition (HyperFrames)"];
 
@@ -319,25 +325,19 @@ export default function Home() {
         {tab === "library" && (
           <div className="library">
             <div className="lib-grid">
-              {/* Pinned bundled sample — always present, free, not deletable */}
-              <div className="lib-card" data-status="sample">
-                <video src={SAMPLE.url} controls preload="metadata" playsInline />
-                <div className="meta">
-                  <span className="t">{SAMPLE.title} <span className="tag">Sample</span></span>
-                  <span className="sub2">{SAMPLE.avatar} · bundled example, free to watch</span>
-                </div>
-                <div className="card-actions">
-                  <a className="dl" href={SAMPLE.url} download>↓ Download</a>
-                </div>
-              </div>
-              {videos.length === 0 && (
-                <div className="lib-card empty-card">
-                  <div className="lib-ph">
-                    <span>Your videos will appear here</span>
-                    <button className="link" onClick={() => setTab("create")}>Create one →</button>
+              {/* Pinned bundled samples — one per style, always present, free, not deletable */}
+              {SAMPLES.map((s) => (
+                <div className="lib-card" data-status="sample" data-ar={s.ar} key={s.url}>
+                  <video src={s.url} controls preload="metadata" playsInline />
+                  <div className="meta">
+                    <span className="t">{s.label} <span className="tag">Sample</span></span>
+                    <span className="sub2">Bundled example · free to watch</span>
+                  </div>
+                  <div className="card-actions">
+                    <a className="dl" href={s.url} download>↓ Download</a>
                   </div>
                 </div>
-              )}
+              ))}
               {videos.map((v) => (
                   <div className="lib-card" key={v.id} data-status={v.status} data-ar={v.aspectRatio ?? "16:9"}>
                     {v.status === "done" && v.url ? (
@@ -379,10 +379,10 @@ export default function Home() {
         <div className="modal-backdrop" onClick={() => setSampleOpen(false)}>
           <div className="modal" role="dialog" aria-modal="true" aria-label="Sample video" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <span>Sample · {SAMPLE.title.replace("Sample · ", "")}</span>
+              <span>Sample · {SAMPLES[0].label}</span>
               <button type="button" className="bar-x" aria-label="Close" onClick={() => setSampleOpen(false)}>✕</button>
             </div>
-            <video src={SAMPLE.url} controls autoPlay playsInline />
+            <video src={SAMPLES[0].url} controls autoPlay playsInline />
             <p className="modal-note">A bundled example made with this template — a HeyGen avatar composed in HyperFrames. Free to watch; making your own spends credits.</p>
           </div>
         </div>
