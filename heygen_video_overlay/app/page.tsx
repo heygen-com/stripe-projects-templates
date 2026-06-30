@@ -7,7 +7,7 @@ const DEFAULT_TITLE = "Meet Nova";
 const DEFAULT_SCRIPT =
   "Hi, I'm Nova — your AI spokesperson. Type a script, pick a look, and I'll turn it into a branded video in minutes. No camera, no crew.";
 const SCRIPT_MAX = 280; // keeps speech under the composition's ~20s body window (no truncation)
-const DEMO_URL = "/demo.mp4";
+const SAMPLE = { url: "/demo.mp4", title: "Sample · Meet Nova", avatar: "Melina" }; // bundled free example
 
 const STEPS = ["Generating avatar (HeyGen API)", "Fetching captions", "Rendering composition (HyperFrames)"];
 
@@ -27,7 +27,7 @@ export default function Home() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string>(DEMO_URL); // free demo plays out of the box
+  const [videoUrl, setVideoUrl] = useState<string | null>(null); // result slot = YOUR video only
 
   async function loadVideos() {
     try {
@@ -59,7 +59,7 @@ export default function Home() {
   const running = active?.status === "processing";
   const errored = active?.status === "error" ? active : null;
   const done = videos.filter((v) => v.status === "done");
-  const showingDemo = videoUrl === DEMO_URL;
+  const showingSample = videoUrl === SAMPLE.url;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,7 +81,7 @@ export default function Home() {
   async function deleteVideo(id: string) {
     const v = videos.find((x) => x.id === id);
     await fetch(`/api/renders/${id}`, { method: "DELETE" }).catch(() => {});
-    if (v?.url && videoUrl === v.url) setVideoUrl(DEMO_URL);
+    if (v?.url && videoUrl === v.url) setVideoUrl(null);
     if (activeId === id) setActiveId(null);
     loadVideos();
   }
@@ -98,8 +98,8 @@ export default function Home() {
           </div>
           <div className="acct">
             {account?.balance && (
-              <span className="credits" title="HeyGen wallet balance">
-                <span className="coin" aria-hidden="true">◆</span> {account.balance}
+              <span className="credits" title="Your HeyGen wallet — generating draws from this">
+                <span className="wlab">Wallet</span> <span className="coin" aria-hidden="true">◆</span> {account.balance}
               </span>
             )}
             {(account?.firstName || account?.email) && (
@@ -132,11 +132,18 @@ export default function Home() {
                     <div className="spinner" />
                     <span>Generating… this keeps running even if you refresh.</span>
                   </div>
-                ) : (
+                ) : videoUrl ? (
                   <>
-                    <video key={videoUrl} src={videoUrl} controls autoPlay={!showingDemo} playsInline />
-                    {showingDemo && <span className="demo-pill">Demo · free to watch</span>}
+                    <video key={videoUrl} src={videoUrl} controls autoPlay playsInline />
+                    {showingSample && <span className="demo-pill">Sample · free</span>}
                   </>
+                ) : (
+                  <div className="idle-cta">
+                    <span className="placeholder">Your video will appear here</span>
+                    <button type="button" className="watch-sample" onClick={() => setVideoUrl(SAMPLE.url)}>
+                      ▶ Watch a sample
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -207,7 +214,7 @@ export default function Home() {
                 <span>
                   Generating spends <b>HeyGen credits</b> (
                   <a href="https://developers.heygen.com/docs/pricing" target="_blank" rel="noopener">pay-as-you-go</a>
-                  ). The demo above is free; captions and rendering are local.
+                  ). The sample is free to watch; captions and rendering are local.
                 </span>
               </div>
               <button className="btn" type="submit" disabled={running || !script.trim()}>
@@ -219,13 +226,27 @@ export default function Home() {
 
         {tab === "library" && (
           <div className="library">
-            {videos.length === 0 ? (
-              <div className="empty">
-                No videos yet. Head to <button className="link" onClick={() => setTab("create")}>Create</button> to make your first one.
+            <div className="lib-grid">
+              {/* Pinned bundled sample — always present, free, not deletable */}
+              <div className="lib-card" data-status="sample">
+                <video src={SAMPLE.url} controls preload="metadata" playsInline />
+                <div className="meta">
+                  <span className="t">{SAMPLE.title} <span className="tag">Sample</span></span>
+                  <span className="sub2">{SAMPLE.avatar} · bundled example, free to watch</span>
+                </div>
+                <div className="card-actions">
+                  <a className="dl" href={SAMPLE.url} download>↓ Download</a>
+                </div>
               </div>
-            ) : (
-              <div className="lib-grid">
-                {videos.map((v) => (
+              {videos.length === 0 && (
+                <div className="lib-card empty-card">
+                  <div className="lib-ph">
+                    <span>Your videos will appear here</span>
+                    <button className="link" onClick={() => setTab("create")}>Create one →</button>
+                  </div>
+                </div>
+              )}
+              {videos.map((v) => (
                   <div className="lib-card" key={v.id} data-status={v.status}>
                     {v.status === "done" && v.url ? (
                       <video src={v.url} controls preload="metadata" playsInline />
@@ -253,8 +274,7 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
+            </div>
           </div>
         )}
 

@@ -1,32 +1,26 @@
 [
   {
-    "text": "Hi, I'm your HeyGen avatar.",
+    "text": "Hi, I'm Nova — your AI spokesperson.",
     "start": 0,
-    "end": 2.06,
+    "end": 3.05,
     "id": "w0"
   },
   {
-    "text": "This starter was provisioned in a single",
-    "start": 2.24,
-    "end": 4.17,
+    "text": "Type a script, pick a look, and I'll",
+    "start": 3.5,
+    "end": 5.82,
     "id": "w1"
   },
   {
-    "text": "command with Stripe Projects.",
-    "start": 4.2,
-    "end": 5.78,
+    "text": "turn it into a branded video in minutes.",
+    "start": 5.85,
+    "end": 8.15,
     "id": "w2"
   },
   {
-    "text": "Edit the script, pick an avatar, and",
-    "start": 5.99,
-    "end": 8.05,
+    "text": "No camera, no crew.",
+    "start": 8.65,
+    "end": 10.1,
     "id": "w3"
-  },
-  {
-    "text": "ship your own AI video in minutes.",
-    "start": 8.13,
-    "end": 10.33,
-    "id": "w4"
   }
 ]
