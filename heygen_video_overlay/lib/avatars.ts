@@ -1,6 +1,6 @@
 // The 3 public avatars shipped with this template. These were validated against the
-// HeyGen v3 API (POST /v3/videos, output_format: webm) and proven to render + matte cleanly
-// via local background removal. Each is a digital-twin look (Avatar IV/V capable) — studio
+// HeyGen v3 API (POST /v3/videos, output_format: webm) and proven to render cleanly. Each is a
+// digital-twin look (Avatar IV/V capable) — studio
 // avatars are Avatar III and are rejected by /v3/videos, so don't swap those in here.
 //
 // Thumbnails come from the avatar-looks API (preview_image_url). To refresh, run:

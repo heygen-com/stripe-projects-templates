@@ -20,6 +20,11 @@ export async function POST(req: NextRequest) {
   if (!script) {
     return NextResponse.json({ error: "A script is required — that's what the avatar says." }, { status: 400 });
   }
+  // Keep speech under the composition's ~20s body window so the fixed-length render never truncates.
+  const SCRIPT_MAX = 280;
+  if (script.length > SCRIPT_MAX) {
+    return NextResponse.json({ error: `Script is too long (${script.length}/${SCRIPT_MAX} chars).` }, { status: 400 });
+  }
   const avatar = getAvatar(body.avatarId ?? DEFAULT_AVATAR_ID);
 
   // Record the job as "processing" BEFORE starting work, so a page refresh can re-attach to it.

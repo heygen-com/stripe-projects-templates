@@ -8,7 +8,7 @@ with [HyperFrames](https://hyperframes.heygen.com).
 ## What you get
 
 - A one-page web app: pick one of 3 avatars, write a script, generate, watch the result.
-- A server-side pipeline: HeyGen v3 render → local background removal → transcription → HyperFrames render.
+- A server-side pipeline: HeyGen v3 render → captions (SRT import) → HyperFrames render.
 - Zero secrets in the repo — the API key arrives via `stripe projects env --pull`.
 
 ## Run it

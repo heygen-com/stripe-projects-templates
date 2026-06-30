@@ -62,8 +62,7 @@ export async function createAvatarVideo(opts: {
       avatar_id: opts.avatarId,
       voice_id: opts.voiceId,
       script: opts.script,
-      // Opaque webm that carries the speech audio; we matte it to a transparent cutout locally
-      // (these public avatars aren't matting-trained, so remove_background:true wouldn't help).
+      // Opaque webm that carries the speech audio; shown as-is in the composition's avatar card.
       output_format: "webm",
       // Sidecar SRT (no `style` => not burned in). We import it for caption timings instead of
       // running Whisper locally — HeyGen's own timings, zero extra dependency.

@@ -1,5 +1,5 @@
 // Runs before `dev`. Verifies the render toolchain so the first generation doesn't fail
-// mid-way on a clean machine. hyperframes downloads Chrome / Whisper / u2net models on first
+// mid-way on a clean machine. hyperframes downloads a headless Chrome on first
 // use; we surface that here rather than letting it stall a request.
 import { spawnSync } from "node:child_process";
 import path from "node:path";

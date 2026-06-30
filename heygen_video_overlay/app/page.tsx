@@ -3,23 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { AVATARS, DEFAULT_AVATAR_ID } from "@/lib/avatars";
 
-const DEFAULT_TITLE = "Introducing Nova";
+const DEFAULT_TITLE = "Meet Nova";
 const DEFAULT_SCRIPT =
-  "Hi, I'm your HeyGen avatar. This starter was provisioned in a single command with Stripe Projects. Edit the script, pick an avatar, and ship your own AI video in minutes.";
+  "Hi, I'm Nova — your AI spokesperson. Type a script, pick a look, and I'll turn it into a branded video in minutes. No camera, no crew.";
+const SCRIPT_MAX = 280; // keeps speech under the composition's ~20s body window (no truncation)
+const DEMO_URL = "/demo.mp4";
 
 const STEPS = ["Generating avatar (HeyGen API)", "Fetching captions", "Rendering composition (HyperFrames)"];
 
 type Status = "processing" | "done" | "error";
 type Video = {
-  id: string;
-  title: string;
-  avatar: string;
-  status: Status;
-  createdAt: string;
-  url?: string;
-  error?: string;
-  billing?: boolean;
-  pricingUrl?: string;
+  id: string; title: string; avatar: string; status: Status; createdAt: string;
+  url?: string; error?: string; billing?: boolean; pricingUrl?: string;
 };
 type Account = { firstName: string; email: string; balance: string | null };
 type Tab = "create" | "library";
@@ -32,14 +27,13 @@ export default function Home() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string>(DEMO_URL); // free demo plays out of the box
 
   async function loadVideos() {
     try {
       const data = await (await fetch("/api/renders")).json();
       const vids: Video[] = data.videos ?? [];
       setVideos(vids);
-      // After a refresh, re-attach to an in-flight job so it isn't "lost".
       setActiveId((cur) => cur ?? vids.find((v) => v.status === "processing")?.id ?? null);
     } catch {
       /* best-effort */
@@ -47,13 +41,9 @@ export default function Home() {
   }
   useEffect(() => {
     loadVideos();
-    fetch("/api/account")
-      .then((r) => r.json())
-      .then(setAccount)
-      .catch(() => {});
+    fetch("/api/account").then((r) => r.json()).then(setAccount).catch(() => {});
   }, []);
 
-  // Poll while any job is still rendering (server-side work continues across refreshes).
   const hasProcessing = videos.some((v) => v.status === "processing");
   useEffect(() => {
     if (!hasProcessing) return;
@@ -62,7 +52,6 @@ export default function Home() {
   }, [hasProcessing]);
 
   const active = useMemo(() => videos.find((v) => v.id === activeId), [videos, activeId]);
-  // When the watched job finishes, feature it in the player.
   useEffect(() => {
     if (active?.status === "done" && active.url) setVideoUrl(active.url);
   }, [active]);
@@ -70,10 +59,10 @@ export default function Home() {
   const running = active?.status === "processing";
   const errored = active?.status === "error" ? active : null;
   const done = videos.filter((v) => v.status === "done");
+  const showingDemo = videoUrl === DEMO_URL;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setVideoUrl(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -85,9 +74,11 @@ export default function Home() {
       setActiveId(data.jobId);
       loadVideos();
     } catch {
-      /* the job may still be running server-side; polling will surface it */
+      /* job may still run server-side; polling will surface it */
     }
   }
+
+  const initial = (account?.firstName || account?.email || "?").trim().charAt(0).toUpperCase();
 
   return (
     <>
@@ -95,25 +86,26 @@ export default function Home() {
         <div className="bar-inner">
           <div className="brand">
             <img className="orb" src="/heygen-orb.svg" alt="" />
-            <span className="hg">HeyGen</span>
-            <span className="slash">/</span>
-            <span className="sub">AI Video Overlay</span>
+            <span className="hg">HeyGen&nbsp;Studio</span>
           </div>
           <div className="acct">
             {account?.balance && (
-              <span className="wallet" title="HeyGen wallet balance">
-                {account.balance}
+              <span className="credits" title="HeyGen wallet balance">
+                <span className="coin" aria-hidden="true">◆</span> {account.balance}
               </span>
             )}
-            {account?.firstName && <span className="hello">Hi, {account.firstName}</span>}
-            <span className="badge">
-              <span className="dot" /> Stripe Projects · <code>heygen/api</code>
-            </span>
+            {(account?.firstName || account?.email) && (
+              <span className="avatar-initial" title={`${account?.firstName || ""}  ${account?.email || ""}`.trim()}>
+                {initial}
+              </span>
+            )}
           </div>
         </div>
       </header>
 
       <div className="wrap">
+        {account?.firstName && <p className="welcome">Welcome back, {account.firstName}.</p>}
+
         <nav className="tabs" role="tablist">
           <button role="tab" aria-selected={tab === "create"} className="tab" onClick={() => setTab("create")}>
             Create
@@ -132,10 +124,11 @@ export default function Home() {
                     <div className="spinner" />
                     <span>Generating… this keeps running even if you refresh.</span>
                   </div>
-                ) : videoUrl ? (
-                  <video key={videoUrl} src={videoUrl} controls autoPlay playsInline />
                 ) : (
-                  <span className="placeholder">Your video will play here</span>
+                  <>
+                    <video key={videoUrl} src={videoUrl} controls autoPlay={!showingDemo} playsInline />
+                    {showingDemo && <span className="demo-pill">Demo · free to watch</span>}
+                  </>
                 )}
               </div>
 
@@ -158,10 +151,7 @@ export default function Home() {
                     {errored.billing && errored.pricingUrl && (
                       <>
                         {" "}
-                        <a href={errored.pricingUrl} target="_blank" rel="noopener">
-                          Check pricing / top up
-                        </a>
-                        .
+                        <a href={errored.pricingUrl} target="_blank" rel="noopener">Check pricing / top up</a>.
                       </>
                     )}
                   </span>
@@ -170,14 +160,23 @@ export default function Home() {
             </section>
 
             <form className="card compose" onSubmit={onSubmit}>
-              <h2>Compose</h2>
+              <h2>New video</h2>
               <label className="fld">
                 <span className="lab">Title</span>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
               </label>
               <label className="fld">
-                <span className="lab">Script <span className="hint">— what the avatar says</span></span>
-                <textarea value={script} onChange={(e) => setScript(e.target.value)} />
+                <span className="lab">
+                  Script <span className="hint">— what the avatar says</span>
+                </span>
+                <textarea
+                  value={script}
+                  onChange={(e) => setScript(e.target.value.slice(0, SCRIPT_MAX))}
+                  maxLength={SCRIPT_MAX}
+                />
+                <span className={`counter ${script.length > SCRIPT_MAX - 30 ? "near" : ""}`}>
+                  {script.length}/{SCRIPT_MAX}
+                </span>
               </label>
               <span className="pick-lab">Avatar</span>
               <div className="avatars" role="group" aria-label="Choose an avatar">
@@ -199,13 +198,11 @@ export default function Home() {
                 <span className="i">!</span>
                 <span>
                   Generating spends <b>HeyGen credits</b> (
-                  <a href="https://developers.heygen.com/docs/pricing" target="_blank" rel="noopener">
-                    pay-as-you-go
-                  </a>
-                  ). Captions and rendering are free and local.
+                  <a href="https://developers.heygen.com/docs/pricing" target="_blank" rel="noopener">pay-as-you-go</a>
+                  ). The demo above is free; captions and rendering are local.
                 </span>
               </div>
-              <button className="btn" type="submit" disabled={running}>
+              <button className="btn" type="submit" disabled={running || !script.trim()}>
                 {running ? "Generating…" : "Generate video"}
               </button>
             </form>
@@ -225,19 +222,19 @@ export default function Home() {
                     <video src={v.url} controls preload="metadata" playsInline />
                     <div className="meta">
                       <span className="t">{v.title}</span>
-                      <span className="sub2">
-                        {v.avatar} · {new Date(v.createdAt).toLocaleString()}
-                      </span>
+                      <span className="sub2">{v.avatar} · {new Date(v.createdAt).toLocaleString()}</span>
                     </div>
-                    <a className="dl" href={v.url} download>
-                      ↓ Download
-                    </a>
+                    <a className="dl" href={v.url} download>↓ Download</a>
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
+
+        <footer className="foot">
+          <span className="dot" /> Provisioned via Stripe Projects · <code>heygen/api</code>
+        </footer>
       </div>
     </>
   );

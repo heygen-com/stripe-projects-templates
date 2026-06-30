@@ -1,8 +1,8 @@
 // Orchestrates one generation end to end:
-//   HeyGen v3 render (opaque webm + audio) → local u2net cutout (alpha, no audio)
-//   → transcribe the original audio (captions) → HyperFrames render of the final composition.
-// Everything after the HeyGen call is free and local. The cutout is the visible (muted) avatar
-// layer; the ORIGINAL render is the audio track — the cutout has no audio.
+//   HeyGen v3 render (opaque webm + audio + sidecar SRT) → import SRT for captions
+//   → HyperFrames render of the final composition → ffmpeg trim.
+// Everything after the HeyGen call is free and local. The opaque avatar plays (muted) in a card
+// and the same file is the <audio> track.
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile, rm, copyFile } from "node:fs/promises";
 import path from "node:path";
@@ -17,7 +17,7 @@ const INTRO_MS = 2500; // silent title-card intro; speech/captions/avatar are al
 const OUTRO_MS = 2500;
 
 // Expose the bundled ffmpeg to the hyperframes subprocess so a clean machine needs no system
-// FFmpeg (hyperframes render + transcribe + remove-background all shell out to ffmpeg).
+// FFmpeg (hyperframes render + transcribe shell out to ffmpeg).
 function hyperframesEnv(): NodeJS.ProcessEnv {
   const ffmpegDir = ffmpegStatic ? path.dirname(ffmpegStatic) : "";
   return {
@@ -39,6 +39,19 @@ function run(args: string[], cwd = ROOT): Promise<void> {
       code === 0 ? resolve() : reject(new Error(`hyperframes ${args[0]} exited ${code}`)),
     );
   });
+}
+
+// Serialize the stage→render→trim section: composition/assets/ is a single shared slot, so two
+// concurrent jobs would clobber each other. Jobs queue here (the paid HeyGen step runs in parallel).
+let renderLock: Promise<void> = Promise.resolve();
+function withRenderLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = renderLock.then(fn, fn);
+  // keep the chain alive regardless of this job's success/failure
+  renderLock = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
 }
 
 function trim(input: string, output: string, seconds: number): Promise<void> {
@@ -92,38 +105,37 @@ export async function generate(
   const cues = JSON.parse(await readFile(path.join(work, "transcript.json"), "utf8"));
   const speechMs = durationMs(cues);
 
-  // 3. Stage assets the composition reads at fixed paths. HyperFrames variables are scalars only
-  //    (string/number/color/boolean/enum), so media + the caption cues go through files in
-  //    composition/assets/, while text + timing go through --variables-file. The card shows the
-  //    avatar.webm muted; the same file is the <audio> track (HyperFrames mutes video layers).
-  //    NOTE: assets/ is a single shared slot — local dev renders one video at a time.
+  // 3. Stage assets + render. HyperFrames variables are scalars only (string/number/color/...), so
+  //    media + caption cues go through files in composition/assets/ while text/timing go through
+  //    --variables-file. The card shows avatar.webm muted; the same file is the <audio> track.
+  //    composition/assets/ is a SHARED slot, so the stage→render is serialized (renderLock) to keep
+  //    concurrent jobs from clobbering each other (the paid HeyGen step above still runs in parallel).
   onStep?.("render");
-  const assets = path.join(COMPOSITION_DIR, "assets");
-  await mkdir(assets, { recursive: true });
-  await copyFile(avatarWebm, path.join(assets, "avatar.webm"));
-  await copyFile(path.join(work, "transcript.json"), path.join(assets, "transcript.json"));
-
-  const vars = {
-    title: input.title,
-    tagline: "Built with HeyGen · provisioned via Stripe Projects",
-    brandColor: "#6d4aff",
-    speechStartMs: INTRO_MS,
-    introDurationMs: INTRO_MS,
-    bodyDurationMs: speechMs,
-    outroDurationMs: OUTRO_MS,
-    durationMs: INTRO_MS + speechMs + OUTRO_MS,
-  };
-  const varsFile = path.join(work, "vars.json");
-  await writeFile(varsFile, JSON.stringify(vars));
-
-  await mkdir(path.join(ROOT, "public", "renders"), { recursive: true });
   const out = path.join("public", "renders", `${jobId}.mp4`);
-  const rendered = path.join(work, "rendered.mp4");
-  await run(["render", "--variables-file", varsFile, "-o", rendered], COMPOSITION_DIR);
+  await withRenderLock(async () => {
+    const assets = path.join(COMPOSITION_DIR, "assets");
+    await mkdir(assets, { recursive: true });
+    await copyFile(avatarWebm, path.join(assets, "avatar.webm"));
+    await copyFile(path.join(work, "transcript.json"), path.join(assets, "transcript.json"));
 
-  // The composition root is a generous fixed length; trim to the real intro+speech+outro so there's
-  // no trailing dead air. Re-encode (clips are short) for a frame-accurate cut.
-  await trim(rendered, path.join(ROOT, out), vars.durationMs / 1000);
+    const vars = {
+      title: input.title,
+      tagline: "Built with HeyGen · provisioned via Stripe Projects",
+      brandColor: "#6d4aff",
+      speechStartMs: INTRO_MS,
+      introDurationMs: INTRO_MS,
+      bodyDurationMs: speechMs,
+      outroDurationMs: OUTRO_MS,
+      durationMs: INTRO_MS + speechMs + OUTRO_MS,
+    };
+    const varsFile = path.join(work, "vars.json");
+    await writeFile(varsFile, JSON.stringify(vars));
+
+    await mkdir(path.join(ROOT, "public", "renders"), { recursive: true });
+    const rendered = path.join(work, "rendered.mp4");
+    await run(["render", "--variables-file", varsFile, "-o", rendered], COMPOSITION_DIR);
+    await trim(rendered, path.join(ROOT, out), vars.durationMs / 1000);
+  });
 
   // Mark the job done; the mp4 is on disk and the gallery/Library reads this sidecar.
   const url = `/renders/${jobId}.mp4`;
