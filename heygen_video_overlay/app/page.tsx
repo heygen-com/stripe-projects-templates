@@ -120,7 +120,17 @@ export default function Home() {
       </header>
 
       <div className="wrap">
-        {account?.firstName && <p className="welcome">Welcome back, {account.firstName}.</p>}
+        <section className="hero">
+          <p className="hero-eyebrow">
+            {account?.firstName ? `Welcome back, ${account.firstName}` : "HeyGen × HyperFrames"}
+          </p>
+          <h1 className="hero-title">Turn a script into a branded AI video.</h1>
+          <p className="hero-sub">
+            A HeyGen avatar composed over motion graphics with synced captions, rendered locally with
+            HyperFrames — with the HeyGen API provisioned in one command via Stripe Projects. Type a
+            script, pick a look, and generate.
+          </p>
+        </section>
 
         {barOpen && (
           <div className="sample-bar">

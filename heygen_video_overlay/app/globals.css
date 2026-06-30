@@ -27,6 +27,12 @@ img { max-width: 100%; }
 .credits .wlab { color: var(--muted); font-weight: 600; }
 .avatar-initial { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; background: linear-gradient(140deg, var(--accent), #9b7bff); cursor: default; flex: 0 0 auto; }
 .welcome { color: var(--muted); font-size: 15px; margin: 26px 0 -8px; }
+/* Intro hero card (Mixpanel-style) */
+.hero { margin: 26px 0 18px; border-radius: 20px; padding: 34px 36px; color: #fff;
+  background: radial-gradient(120% 140% at 12% 10%, #7d5cff 0%, var(--accent) 38%, #4a2fc7 100%); }
+.hero-eyebrow { margin: 0 0 10px; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
+.hero-title { margin: 0; font-size: clamp(26px, 3vw, 38px); font-weight: 750; letter-spacing: -0.02em; line-height: 1.08; text-wrap: balance; max-width: 22ch; }
+.hero-sub { margin: 14px 0 0; max-width: 64ch; font-size: 15.5px; line-height: 1.5; color: rgba(255, 255, 255, 0.85); }
 .foot { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px; font-family: var(--mono); display: flex; align-items: center; gap: 8px; }
 .foot .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--stripe); }
 .demo-pill { position: absolute; top: 14px; left: 14px; z-index: 2; font-size: 12px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 999px; padding: 5px 11px; backdrop-filter: blur(4px); }
