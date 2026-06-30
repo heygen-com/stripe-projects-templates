@@ -14,7 +14,7 @@
     "start": "NODE_OPTIONS=--no-experimental-webstorage next start"
   },
   "dependencies": {
-    "next": "15.3.1",
+    "next": "15.5.18",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
