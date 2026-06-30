@@ -7,6 +7,12 @@ Each template lives in its own self-contained subdirectory and is published to t
 [`stripe/projects-template-registry`](https://github.com/stripe/projects-template-registry) via a
 manifest that pins a commit in this repo.
 
+## Demo
+
+`heygen_avatar_video` — the landing page, the three styles, and how it works:
+
+![HeyGen Studio](docs/landing-scroll.gif)
+
 ## Templates
 
 | Template | What it does | Stack |
