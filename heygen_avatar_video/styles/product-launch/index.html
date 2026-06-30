@@ -7,6 +7,7 @@
     { "id": "tagline", "type": "string", "label": "Tagline", "default": "Start building →" },
     { "id": "brandColor", "type": "color", "label": "Brand color", "default": "#2dd4bf" },
     { "id": "productImage", "type": "string", "label": "Product image", "default": "" },
+    { "id": "presenter", "type": "string", "label": "Presenter name", "default": "" },
     { "id": "introDurationMs", "type": "number", "label": "Intro ms", "default": 2500 },
     { "id": "bodyDurationMs", "type": "number", "label": "Body ms", "default": 10500 },
     { "id": "outroDurationMs", "type": "number", "label": "Outro ms", "default": 2500 },
@@ -135,7 +136,7 @@
       </div>
       <audio id="avatar-audio" src="assets/avatar.mp4" data-start="2.5" data-track-index="4"></audio>
       <!-- overlays sit on top of the full-frame showcase device layer by design -->
-      <div class="pres-label" id="pres-label" data-layout-allow-overlap>Nova · AI spokesperson</div>
+      <div class="pres-label" id="pres-label" data-layout-allow-overlap>AI spokesperson</div>
 
       <!-- intro title (texture-masked) -->
       <div id="title" class="layer" style="z-index: 30;">
@@ -181,6 +182,7 @@
 
       document.documentElement.style.setProperty("--brand", brand);
       document.getElementById("title-text").textContent = v.title || "";
+      document.getElementById("pres-label").textContent = v.presenter ? `${v.presenter} · AI spokesperson` : "AI spokesperson";
       // brand-tint the kicker + caption accents to the resolved brandColor
       document.getElementById("kicker").style.color = brand;
 

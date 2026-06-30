@@ -148,6 +148,7 @@ export async function generate(
     const vars = {
       title: input.title,
       tagline: style.tagline,
+      presenter: avatar.name, // styles that show a name label (e.g. product-launch) read this
       brandColor: style.accent,
       speechStartMs: INTRO_MS,
       introDurationMs: INTRO_MS,

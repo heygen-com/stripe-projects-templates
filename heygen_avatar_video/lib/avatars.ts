@@ -22,7 +22,9 @@ export const AVATARS: Avatar[] = [
   {
     id: "ab1db5a0aeff4778bb0b8d9cce82ea4a",
     name: "Valeria",
-    voiceId: "2d4c67738ade47dd8025961493b5c2b4",
+    // Her catalog default_voice_id (2d4c…) 404s on /v3/videos ("Voice not found"); use a valid
+    // platform voice (Jessica Anne Bogart, from GET /v2/voices) instead.
+    voiceId: "b966c31caf124c2a99f19ff1479c964f",
     thumbnailUrl:
       "https://files2.heygen.ai/avatar/v3/ab1db5a0aeff4778bb0b8d9cce82ea4a/half/2.2/preview_target.webp",
   },

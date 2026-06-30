@@ -1,26 +1,26 @@
 [
   {
-    "text": "Hi, I'm Nova — your AI spokesperson.",
+    "text": "Hi, I'm Zain, your AI spokesperson.",
     "start": 0,
-    "end": 3.05,
+    "end": 1.9300000000000002,
     "id": "w0"
   },
   {
     "text": "Type a script, pick a look, and I'll",
-    "start": 3.5,
-    "end": 5.82,
+    "start": 2.03,
+    "end": 3.56,
     "id": "w1"
   },
   {
     "text": "turn it into a branded video in minutes.",
-    "start": 5.85,
-    "end": 8.15,
+    "start": 3.6,
+    "end": 5.2,
     "id": "w2"
   },
   {
     "text": "No camera, no crew.",
-    "start": 8.65,
-    "end": 10.1,
+    "start": 5.4,
+    "end": 6.49,
     "id": "w3"
   }
 ]

@@ -54,9 +54,7 @@
 
       /* === Body: avatar full-bleed (object-fit cover) === */
       #stage { position: absolute; inset: 0; z-index: 10; overflow: hidden; }
-      .parallax-zoom-grid { position: absolute; inset: 0; }
-      .parallax-zoom-card { position: absolute; inset: 0; }
-      #avatar-card { width: 100%; height: 100%; }
+      #avatar-card { position: absolute; inset: 0; transform-origin: center; will-change: transform; }
       #avatar-card video {
         width: 100%; height: 100%; object-fit: cover; object-position: center 18%; display: block;
       }
@@ -146,10 +144,8 @@
            #stage is a NON-timed wrapper (opacity owned by GSAP) so the framework can drive the
            video directly — a data-start video must not be nested in another data-start element. -->
       <div id="stage">
-        <div class="parallax-zoom-grid" id="pz-grid" style="--pz-focus-scale: 1.12; --pz-sibling-push: 0px; --pz-sibling-fade: 0;">
-          <div class="parallax-zoom-card" id="avatar-card" data-pz-focus="true" data-pz-row="0" data-pz-col="0">
-            <video id="avatar-video" class="clip" src="assets/avatar.mp4" muted playsinline data-start="2.5" data-media-start="0" data-track-index="1"></video>
-          </div>
+        <div id="avatar-card">
+          <video id="avatar-video" class="clip" src="assets/avatar.mp4" muted playsinline data-start="2.5" data-media-start="0" data-track-index="1"></video>
         </div>
         <div id="wash"></div>
         <div id="scrim"></div>
@@ -282,8 +278,8 @@
       tl.fromTo("#cap-bar", { opacity: 0, y: 34, scale: 0.96 },
         { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "power3.out" }, speechStart + 0.25);
 
-      // slow cinematic parallax-zoom push across the whole body (registry: parallax-zoom)
-      tl.fromTo("#pz-grid", { "--pz-progress": 0 }, { "--pz-progress": 1, duration: body - 0.2, ease: "power1.inOut" }, speechStart);
+      // slow cinematic push: scale the full-bleed avatar 1.0→1.06 across the body (seek-driven tween).
+      tl.fromTo("#avatar-card", { scale: 1.0 }, { scale: 1.06, duration: body - 0.2, ease: "power1.inOut" }, speechStart);
 
       // --- TRANSITION 2: body → outro (blur crossfade) ---
       const t2 = outroAt - 0.3;

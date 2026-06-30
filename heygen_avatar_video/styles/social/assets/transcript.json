@@ -1,26 +1,26 @@
 [
   {
-    "text": "Hi, I'm Nova — your AI spokesperson.",
+    "text": "Hi, I'm Valeria.",
     "start": 0,
-    "end": 3.05,
+    "end": 1.07,
     "id": "w0"
   },
   {
-    "text": "Type a script, pick a look, and I'll",
-    "start": 3.5,
-    "end": 5.82,
+    "text": "Type a script, pick a style, and HeyGen",
+    "start": 1.18,
+    "end": 3.48,
     "id": "w1"
   },
   {
-    "text": "turn it into a branded video in minutes.",
-    "start": 5.85,
-    "end": 8.15,
+    "text": "Studio turns it into a branded video, no",
+    "start": 3.54,
+    "end": 6.12,
     "id": "w2"
   },
   {
-    "text": "No camera, no crew.",
-    "start": 8.65,
-    "end": 10.1,
+    "text": "camera, no crew.",
+    "start": 6.19,
+    "end": 7.28,
     "id": "w3"
   }
 ]
