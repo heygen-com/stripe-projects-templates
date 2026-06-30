@@ -1,0 +1,28 @@
+{
+  "name": "heygen-video-overlay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prompt to an AI avatar video with motion graphics, captions, and shader transitions — powered by the HeyGen API, provisioned via Stripe Projects.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "preflight": "node scripts/preflight.mjs",
+    "predev": "node scripts/preflight.mjs",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "15.3.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2",
+    "ffmpeg-static": "5.2.0",
+    "hyperframes": "0.7.20",
+    "typescript": "5.8.3"
+  }
+}

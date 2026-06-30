@@ -1,0 +1,9 @@
+# Per-template node modules / build output / local env are ignored repo-wide.
+node_modules/
+.next/
+.DS_Store
+*.log
+
+# Secrets never get committed; the sample is the one exception.
+.env*
+!.env.example

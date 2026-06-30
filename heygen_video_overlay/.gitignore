@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+
+# Generated artifacts from the pipeline (avatar renders, cutouts, transcripts, final videos)
+/work/
+/public/renders/
+
+# Secrets — never commit; .env.example is the only tracked env file
+.env*
+!.env.example
+
+.DS_Store
+*.log
