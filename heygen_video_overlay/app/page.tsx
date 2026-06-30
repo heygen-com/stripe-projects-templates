@@ -30,6 +30,7 @@ export default function Home() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null); // result slot = YOUR video only
   const [sampleOpen, setSampleOpen] = useState(false); // sample plays in a modal, never the result slot
   const [barOpen, setBarOpen] = useState(true);
+  const [demoNote, setDemoNote] = useState<string | null>(null); // set when Generate runs in demo mode (no key)
 
   async function loadVideos() {
     try {
@@ -62,7 +63,10 @@ export default function Home() {
 
   const active = useMemo(() => videos.find((v) => v.id === activeId), [videos, activeId]);
   useEffect(() => {
-    if (active?.status === "done" && active.url) setVideoUrl(active.url);
+    if (active?.status === "done" && active.url) {
+      setVideoUrl(active.url);
+      setDemoNote(null);
+    }
   }, [active]);
 
   const running = active?.status === "processing";
@@ -79,6 +83,13 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) return;
+      if (data.demo) {
+        // No key yet — show the bundled sample as the result, clearly labeled.
+        setVideoUrl(data.url);
+        setDemoNote(data.message);
+        return;
+      }
+      setDemoNote(null);
       setActiveId(data.jobId);
       loadVideos();
     } catch {
@@ -170,6 +181,13 @@ export default function Home() {
                   <span className="placeholder">Your video will appear here</span>
                 )}
               </div>
+
+              {demoNote && (
+                <div className="demo-result">
+                  <span className="d-badge">Demo</span>
+                  <span>{demoNote}</span>
+                </div>
+              )}
 
               {running && (
                 <ol className="steps">

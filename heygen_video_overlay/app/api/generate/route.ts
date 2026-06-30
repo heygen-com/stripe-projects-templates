@@ -3,6 +3,7 @@ import { generate } from "@/lib/pipeline";
 import { getAvatar, DEFAULT_AVATAR_ID } from "@/lib/avatars";
 import { writeJob } from "@/lib/jobs";
 import { InsufficientCreditsError } from "@/lib/heygen";
+import { hasHeyGenKey, DEMO_URL } from "@/lib/config";
 
 // The pipeline shells out to the hyperframes CLI and reads/writes files — must be Node, not edge.
 export const runtime = "nodejs";
@@ -26,6 +27,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Script is too long (${script.length}/${SCRIPT_MAX} chars).` }, { status: 400 });
   }
   const avatar = getAvatar(body.avatarId ?? DEFAULT_AVATAR_ID);
+
+  // Zero-config demo mode: with no heygen/api provisioned yet (a fresh scaffold), don't error on the
+  // headline action — return the bundled sample so the app immediately works. Provisioning the key
+  // flips this to a real render of the user's script. (Mirrors Mixpanel's demo→live switch.)
+  if (!hasHeyGenKey()) {
+    return NextResponse.json({
+      demo: true,
+      url: DEMO_URL,
+      message: "Demo result — add the heygen/api service (or a HEYGEN_API_KEY) to render your own script.",
+    });
+  }
 
   // Record the job as "processing" BEFORE starting work, so a page refresh can re-attach to it.
   const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
