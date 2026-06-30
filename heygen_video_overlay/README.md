@@ -21,10 +21,9 @@ pnpm dev            # runs a preflight, then starts the app at http://localhost:
 If you didn't scaffold via Stripe Projects, copy `.env.example` to `.env.local` and paste a key
 from <https://app.heygen.com/settings/api>.
 
-**First run is slow:** HyperFrames downloads a headless Chrome and the u2net background-removal
-model (~168 MB) the first time. Subsequent runs are fast. You need **Node ≥ 22**; FFmpeg is bundled
-(`ffmpeg-static`), so no system install is required. (Captions come from HeyGen's own subtitle file —
-no speech-to-text model to download.)
+**First run is slow:** HyperFrames downloads a headless Chrome the first time. Subsequent runs are
+fast. You need **Node ≥ 22**; FFmpeg is bundled (`ffmpeg-static`), so no system install is required.
+(Captions come from HeyGen's own subtitle file — no speech-to-text model to download.)
 
 ## How it works
 
@@ -33,13 +32,12 @@ Generating one video runs four steps server-side (`lib/pipeline.ts`):
 | Step | Tool | Cost |
 |------|------|------|
 | 1. Generate avatar | HeyGen v3 API (`POST /v3/videos`, `output_format: webm`) | **paid** (HeyGen credits) |
-| 2. Cut out the background | `hyperframes remove-background` (u2net) → transparent webm | free, local (~minutes on CPU) |
-| 3. Captions | HeyGen sidecar SRT → `hyperframes transcribe` (format import, no Whisper) | free, local |
-| 4. Render the composition | `hyperframes render` (avatar cutout + captions + motion graphics) | free, local |
+| 2. Captions | HeyGen sidecar SRT → `hyperframes transcribe` (format import, no Whisper) | free, local |
+| 3. Render the composition | `hyperframes render` (avatar card + captions + WebGL shader motion) | free, local |
 
-The HeyGen webm is opaque but carries the speech audio, and HeyGen returns a matching SRT. Background
-removal produces a transparent, **video-only** cutout, so the composition uses the cutout as a muted
-video layer and the original render as the audio track, with captions from the SRT. Generating spends credits ([pay-as-you-go pricing](https://developers.heygen.com/docs/pricing));
+The HeyGen webm is opaque and carries the speech audio, and HeyGen returns a matching SRT. The
+composition shows the avatar in a framed card (muted video layer; the same file is the `<audio>`
+track), over a WebGL shader background, with caption cues from the SRT driven by HyperFrames' `hf-seek`. Generating spends credits ([pay-as-you-go pricing](https://developers.heygen.com/docs/pricing));
 the local steps don't.
 
 ## Make it yours

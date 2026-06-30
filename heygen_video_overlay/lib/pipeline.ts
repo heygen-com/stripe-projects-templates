@@ -40,6 +40,19 @@ function run(args: string[], cwd = ROOT): Promise<void> {
   });
 }
 
+function trim(input: string, output: string, seconds: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!ffmpegStatic) return reject(new Error("ffmpeg-static missing"));
+    const p = spawn(
+      ffmpegStatic,
+      ["-y", "-i", input, "-t", String(seconds), "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", output],
+      { stdio: "inherit" },
+    );
+    p.on("error", reject);
+    p.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg trim exited ${code}`))));
+  });
+}
+
 export type GenerateInput = { title: string; script: string; avatarId?: string };
 export type GenerateResult = { videoPath: string; publicUrl: string };
 
@@ -54,10 +67,10 @@ export async function generate(
   const work = path.join(ROOT, "work", jobId);
   await mkdir(work, { recursive: true });
   const avatarWebm = path.join(work, "avatar.webm");
-  const cutoutWebm = path.join(work, "avatar_cutout.webm");
   const captionsSrt = path.join(work, "captions.srt");
 
-  // 1. HeyGen avatar (paid) — opaque webm carrying the speech audio + a sidecar SRT.
+  // 1. HeyGen avatar (paid) — opaque webm carrying the speech audio + a sidecar SRT. We present it
+  //    in a framed card (no background removal), so the opaque render is used as-is.
   onStep?.("avatar");
   const { videoId } = await createAvatarVideo({
     avatarId: avatar.id,
@@ -67,11 +80,7 @@ export async function generate(
   const { videoUrl, subtitleUrl } = await waitForVideo(videoId);
   await download(videoUrl, avatarWebm);
 
-  // 2. Local matting (free) — transparent cutout, video-only.
-  onStep?.("cutout");
-  await run(["remove-background", avatarWebm, "-o", cutoutWebm]);
-
-  // 3. Captions (free) — import HeyGen's SRT (HeyGen's own timings; no Whisper). `transcribe` on an
+  // 2. Captions (free) — import HeyGen's SRT (HeyGen's own timings; no Whisper). `transcribe` on an
   //    .srt is a pure format conversion to transcript.json (a list of {text,start,end,id} cues).
   onStep?.("transcribe");
   if (!subtitleUrl) throw new Error("HeyGen returned no subtitle_url (caption sidecar missing)");
@@ -80,15 +89,15 @@ export async function generate(
   const cues = JSON.parse(await readFile(path.join(work, "transcript.json"), "utf8"));
   const speechMs = durationMs(cues);
 
-  // 4. Stage assets the composition reads at fixed paths. HyperFrames variables are scalars only
+  // 3. Stage assets the composition reads at fixed paths. HyperFrames variables are scalars only
   //    (string/number/color/boolean/enum), so media + the caption cues go through files in
-  //    composition/assets/, while text + timing go through --variables-file. NOTE: assets/ is a
-  //    single shared slot — local dev renders one video at a time (documented in composition/README).
+  //    composition/assets/, while text + timing go through --variables-file. The card shows the
+  //    avatar.webm muted; the same file is the <audio> track (HyperFrames mutes video layers).
+  //    NOTE: assets/ is a single shared slot — local dev renders one video at a time.
   onStep?.("render");
   const assets = path.join(COMPOSITION_DIR, "assets");
   await mkdir(assets, { recursive: true });
-  await copyFile(cutoutWebm, path.join(assets, "avatar.webm")); // transparent, muted video layer
-  await copyFile(avatarWebm, path.join(assets, "audio.webm")); // carries the speech (cutout has none)
+  await copyFile(avatarWebm, path.join(assets, "avatar.webm"));
   await copyFile(path.join(work, "transcript.json"), path.join(assets, "transcript.json"));
 
   const vars = {
@@ -106,7 +115,12 @@ export async function generate(
 
   await mkdir(path.join(ROOT, "public", "renders"), { recursive: true });
   const out = path.join("public", "renders", `${jobId}.mp4`);
-  await run(["render", "--variables-file", varsFile, "-o", path.join(ROOT, out)], COMPOSITION_DIR);
+  const rendered = path.join(work, "rendered.mp4");
+  await run(["render", "--variables-file", varsFile, "-o", rendered], COMPOSITION_DIR);
+
+  // The composition root is a generous fixed length; trim to the real intro+speech+outro so there's
+  // no trailing dead air. Re-encode (clips are short) for a frame-accurate cut.
+  await trim(rendered, path.join(ROOT, out), vars.durationMs / 1000);
 
   // Drop the per-job working dir; leave composition/assets/ in place (it holds the latest render's
   // staged inputs, overwriting the shipped Melina sample — fine for a local scaffold).

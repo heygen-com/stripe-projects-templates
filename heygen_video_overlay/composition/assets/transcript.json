@@ -1,3 +1,32 @@
 [
-  { "text": "Hi, I'm a HeyGen avatar.", "start": 0.0, "end": 1.68, "id": "w0" }
+  {
+    "text": "Hi, I'm your HeyGen avatar.",
+    "start": 0,
+    "end": 2.06,
+    "id": "w0"
+  },
+  {
+    "text": "This starter was provisioned in a single",
+    "start": 2.24,
+    "end": 4.17,
+    "id": "w1"
+  },
+  {
+    "text": "command with Stripe Projects.",
+    "start": 4.2,
+    "end": 5.78,
+    "id": "w2"
+  },
+  {
+    "text": "Edit the script, pick an avatar, and",
+    "start": 5.99,
+    "end": 8.05,
+    "id": "w3"
+  },
+  {
+    "text": "ship your own AI video in minutes.",
+    "start": 8.13,
+    "end": 10.33,
+    "id": "w4"
+  }
 ]

@@ -10,9 +10,8 @@ const DEFAULT_SCRIPT =
 // User-facing progress groups. The matting + render are the long ones, so they get sub-status.
 const STEPS = [
   { key: "avatar", label: "Generating avatar (HeyGen API)", note: "" },
-  { key: "cutout", label: "Preparing transparent cutout", note: "local · a few minutes" },
-  { key: "transcribe", label: "Transcribing speech for captions", note: "" },
-  { key: "render", label: "Rendering composition (HyperFrames)", note: "" },
+  { key: "transcribe", label: "Fetching captions", note: "" },
+  { key: "render", label: "Rendering composition (HyperFrames)", note: "local" },
 ];
 
 type Phase = "idle" | "running" | "done" | "error";

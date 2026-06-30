@@ -39,7 +39,7 @@ const env = {
 
 const doctor = spawnSync("npx", ["--no-install", "hyperframes", "doctor"], { env, encoding: "utf8" });
 if (doctor.status === 0) ok("hyperframes doctor passed");
-else warn("hyperframes doctor reported issues — see `npx hyperframes doctor`. Chrome + the u2net background-removal model download on first render.");
+else warn("hyperframes doctor reported issues — see `npx hyperframes doctor`. A headless Chrome downloads on the first render.");
 
 if (!process.env.HEYGEN_API_KEY) {
   warn(
