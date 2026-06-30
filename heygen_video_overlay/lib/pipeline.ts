@@ -9,6 +9,7 @@ import path from "node:path";
 import ffmpegStatic from "ffmpeg-static";
 import { createAvatarVideo, waitForVideo, download } from "./heygen";
 import { getAvatar, DEFAULT_AVATAR_ID } from "./avatars";
+import { writeJob } from "./jobs";
 
 const ROOT = process.cwd();
 const COMPOSITION_DIR = path.join(ROOT, "composition");
@@ -56,14 +57,16 @@ function trim(input: string, output: string, seconds: number): Promise<void> {
 export type GenerateInput = { title: string; script: string; avatarId?: string };
 export type GenerateResult = { videoPath: string; publicUrl: string };
 
+// jobId is created by the caller (the route) so it can record a "processing" job before this
+// background work starts — that's what makes generation survive a page refresh.
 export async function generate(
   input: GenerateInput,
+  jobId: string,
   onStep?: (step: string) => void,
 ): Promise<GenerateResult> {
   const avatar = getAvatar(input.avatarId ?? DEFAULT_AVATAR_ID);
   if (!avatar) throw new Error("Unknown avatar");
 
-  const jobId = `${Date.now().toString(36)}`;
   const work = path.join(ROOT, "work", jobId);
   await mkdir(work, { recursive: true });
   const avatarWebm = path.join(work, "avatar.webm");
@@ -122,22 +125,14 @@ export async function generate(
   // no trailing dead air. Re-encode (clips are short) for a frame-accurate cut.
   await trim(rendered, path.join(ROOT, out), vars.durationMs / 1000);
 
-  // Persist a metadata sidecar so generated videos survive a page refresh and show up in the
-  // gallery (the mp4 itself is already on disk under public/renders/). A real product would store
-  // these in a DB + object storage keyed to the user; on-disk JSON is the right level for a starter.
-  const meta = {
-    id: jobId,
-    title: input.title || "Untitled",
-    avatar: avatar.name,
-    createdAt: new Date().toISOString(),
-    url: `/renders/${jobId}.mp4`,
-  };
-  await writeFile(path.join(ROOT, "public", "renders", `${jobId}.json`), JSON.stringify(meta));
+  // Mark the job done; the mp4 is on disk and the gallery/Library reads this sidecar.
+  const url = `/renders/${jobId}.mp4`;
+  await writeJob(jobId, { status: "done", url });
 
   // Drop the per-job working dir; leave composition/assets/ in place (it holds the latest render's
   // staged inputs, overwriting the shipped Melina sample — fine for a local scaffold).
   await rm(work, { recursive: true, force: true }).catch(() => {});
-  return { videoPath: out, publicUrl: meta.url };
+  return { videoPath: out, publicUrl: url };
 }
 
 // transcript.json (from SRT import) is a list of cues with second-based times; speech length = last cue end.

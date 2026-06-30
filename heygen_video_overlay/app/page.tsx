@@ -1,20 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AVATARS, DEFAULT_AVATAR_ID } from "@/lib/avatars";
 
 const DEFAULT_TITLE = "Introducing Nova";
 const DEFAULT_SCRIPT =
   "Hi, I'm your HeyGen avatar. This starter was provisioned in a single command with Stripe Projects. Edit the script, pick an avatar, and ship your own AI video in minutes.";
 
-const STEPS = [
-  { key: "avatar", label: "Generating avatar (HeyGen API)", note: "" },
-  { key: "transcribe", label: "Fetching captions", note: "" },
-  { key: "render", label: "Rendering composition (HyperFrames)", note: "local" },
-];
+const STEPS = ["Generating avatar (HeyGen API)", "Fetching captions", "Rendering composition (HyperFrames)"];
 
-type Phase = "idle" | "running" | "done" | "error";
-type Video = { id: string; title: string; avatar: string; createdAt: string; url: string };
+type Status = "processing" | "done" | "error";
+type Video = {
+  id: string;
+  title: string;
+  avatar: string;
+  status: Status;
+  createdAt: string;
+  url?: string;
+  error?: string;
+  billing?: boolean;
+  pricingUrl?: string;
+};
+type Account = { firstName: string; email: string; balance: string | null };
 type Tab = "create" | "library";
 
 export default function Home() {
@@ -22,28 +29,50 @@ export default function Home() {
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [avatarId, setAvatarId] = useState(DEFAULT_AVATAR_ID);
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [error, setError] = useState<{ message: string; billing?: boolean; pricingUrl?: string } | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   async function loadVideos() {
     try {
-      const res = await fetch("/api/renders");
-      const data = await res.json();
-      setVideos(data.videos ?? []);
+      const data = await (await fetch("/api/renders")).json();
+      const vids: Video[] = data.videos ?? [];
+      setVideos(vids);
+      // After a refresh, re-attach to an in-flight job so it isn't "lost".
+      setActiveId((cur) => cur ?? vids.find((v) => v.status === "processing")?.id ?? null);
     } catch {
-      /* gallery is best-effort */
+      /* best-effort */
     }
   }
   useEffect(() => {
     loadVideos();
+    fetch("/api/account")
+      .then((r) => r.json())
+      .then(setAccount)
+      .catch(() => {});
   }, []);
+
+  // Poll while any job is still rendering (server-side work continues across refreshes).
+  const hasProcessing = videos.some((v) => v.status === "processing");
+  useEffect(() => {
+    if (!hasProcessing) return;
+    const t = setInterval(loadVideos, 4000);
+    return () => clearInterval(t);
+  }, [hasProcessing]);
+
+  const active = useMemo(() => videos.find((v) => v.id === activeId), [videos, activeId]);
+  // When the watched job finishes, feature it in the player.
+  useEffect(() => {
+    if (active?.status === "done" && active.url) setVideoUrl(active.url);
+  }, [active]);
+
+  const running = active?.status === "processing";
+  const errored = active?.status === "error" ? active : null;
+  const done = videos.filter((v) => v.status === "done");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setPhase("running");
-    setError(null);
     setVideoUrl(null);
     try {
       const res = await fetch("/api/generate", {
@@ -52,21 +81,13 @@ export default function Home() {
         body: JSON.stringify({ title, script, avatarId }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setError({ message: data.error, billing: data.billing, pricingUrl: data.pricingUrl });
-        setPhase("error");
-        return;
-      }
-      setVideoUrl(data.url);
-      setPhase("done");
+      if (!res.ok) return;
+      setActiveId(data.jobId);
       loadVideos();
     } catch {
-      setError({ message: "Network error — is the dev server still running?" });
-      setPhase("error");
+      /* the job may still be running server-side; polling will surface it */
     }
   }
-
-  const running = phase === "running";
 
   return (
     <>
@@ -78,9 +99,17 @@ export default function Home() {
             <span className="slash">/</span>
             <span className="sub">AI Video Overlay</span>
           </div>
-          <span className="badge">
-            <span className="dot" /> provisioned via Stripe Projects · <code>heygen/api</code>
-          </span>
+          <div className="acct">
+            {account?.balance && (
+              <span className="wallet" title="HeyGen wallet balance">
+                {account.balance}
+              </span>
+            )}
+            {account?.firstName && <span className="hello">Hi, {account.firstName}</span>}
+            <span className="badge">
+              <span className="dot" /> Stripe Projects · <code>heygen/api</code>
+            </span>
+          </div>
         </div>
       </header>
 
@@ -90,7 +119,7 @@ export default function Home() {
             Create
           </button>
           <button role="tab" aria-selected={tab === "library"} className="tab" onClick={() => setTab("library")}>
-            Library{videos.length ? <span className="count">{videos.length}</span> : null}
+            Library{done.length ? <span className="count">{done.length}</span> : null}
           </button>
         </nav>
 
@@ -98,36 +127,38 @@ export default function Home() {
           <div className="create">
             <section className="player-col">
               <div className="stage">
-                {videoUrl ? (
+                {running ? (
+                  <div className="generating">
+                    <div className="spinner" />
+                    <span>Generating… this keeps running even if you refresh.</span>
+                  </div>
+                ) : videoUrl ? (
                   <video key={videoUrl} src={videoUrl} controls autoPlay playsInline />
                 ) : (
-                  <span className="placeholder">
-                    {running ? "Generating… this takes a couple of minutes" : "Your video will play here"}
-                  </span>
+                  <span className="placeholder">Your video will play here</span>
                 )}
               </div>
 
               {running && (
                 <ol className="steps">
                   {STEPS.map((s, i) => (
-                    <li key={s.key} data-on="active">
-                      <span className="mark">{i + 1}</span> {s.label}
-                      {s.note && <span className="note"> ({s.note})</span>}
+                    <li key={s} data-on="active">
+                      <span className="mark">{i + 1}</span> {s}
                     </li>
                   ))}
                 </ol>
               )}
 
-              {error && (
+              {errored && (
                 <div className="err">
                   <span>⚠</span>
                   <span>
-                    {error.billing ? "Out of HeyGen credits. " : ""}
-                    {error.message}
-                    {error.billing && error.pricingUrl && (
+                    {errored.billing ? "Out of HeyGen credits. " : ""}
+                    {errored.error}
+                    {errored.billing && errored.pricingUrl && (
                       <>
                         {" "}
-                        <a href={error.pricingUrl} target="_blank" rel="noopener">
+                        <a href={errored.pricingUrl} target="_blank" rel="noopener">
                           Check pricing / top up
                         </a>
                         .
@@ -183,13 +214,13 @@ export default function Home() {
 
         {tab === "library" && (
           <div className="library">
-            {videos.length === 0 ? (
+            {done.length === 0 ? (
               <div className="empty">
                 No videos yet. Head to <button className="link" onClick={() => setTab("create")}>Create</button> to make your first one.
               </div>
             ) : (
               <div className="lib-grid">
-                {videos.map((v) => (
+                {done.map((v) => (
                   <div className="lib-card" key={v.id}>
                     <video src={v.url} controls preload="metadata" playsInline />
                     <div className="meta">

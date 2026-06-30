@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generate } from "@/lib/pipeline";
-import { InsufficientCreditsError, HeyGenError } from "@/lib/heygen";
+import { getAvatar, DEFAULT_AVATAR_ID } from "@/lib/avatars";
+import { writeJob } from "@/lib/jobs";
+import { InsufficientCreditsError } from "@/lib/heygen";
 
 // The pipeline shells out to the hyperframes CLI and reads/writes files — must be Node, not edge.
 export const runtime = "nodejs";
-// Matting + render take minutes; don't let the platform cut the request short.
-export const maxDuration = 800;
 
 export async function POST(req: NextRequest) {
   let body: { title?: string; script?: string; avatarId?: string };
@@ -20,20 +20,31 @@ export async function POST(req: NextRequest) {
   if (!script) {
     return NextResponse.json({ error: "A script is required — that's what the avatar says." }, { status: 400 });
   }
+  const avatar = getAvatar(body.avatarId ?? DEFAULT_AVATAR_ID);
 
-  try {
-    const { publicUrl } = await generate({ title, script, avatarId: body.avatarId });
-    return NextResponse.json({ url: publicUrl });
-  } catch (err) {
-    if (err instanceof InsufficientCreditsError) {
-      // 402 → the UI shows the "top up / check billing" CTA instead of a generic error.
-      return NextResponse.json(
-        { error: err.message, billing: true, pricingUrl: "https://developers.heygen.com/docs/pricing" },
-        { status: 402 },
-      );
-    }
-    const message = err instanceof HeyGenError ? err.message : "Generation failed. See server logs.";
+  // Record the job as "processing" BEFORE starting work, so a page refresh can re-attach to it.
+  const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await writeJob(jobId, {
+    title: title || "Untitled",
+    avatar: avatar?.name ?? "HeyGen",
+    status: "processing",
+    createdAt: new Date().toISOString(),
+  });
+
+  // Fire-and-forget: the render keeps running after the client disconnects (refresh-safe), and the
+  // job sidecar is updated on completion. NOTE: in-process background work is fine for a local
+  // starter; a production deploy would hand this to a queue/worker (serverless freezes after the
+  // response). The client polls GET /api/renders for status.
+  generate({ title, script, avatarId: body.avatarId }, jobId).catch(async (err) => {
+    const billing = err instanceof InsufficientCreditsError;
+    await writeJob(jobId, {
+      status: "error",
+      error: err?.message ?? "Generation failed.",
+      billing,
+      ...(billing ? { pricingUrl: "https://developers.heygen.com/docs/pricing" } : {}),
+    });
     console.error("[generate]", err);
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  });
+
+  return NextResponse.json({ jobId, status: "processing" });
 }

@@ -107,6 +107,28 @@ export async function waitForVideo(
   throw new HeyGenError("Timed out waiting for HeyGen render", "timeout");
 }
 
+// Account info for the header greeting + wallet balance. Balance shape depends on billing_type
+// (wallet / subscription / usage_based), so we surface a friendly label rather than a raw number.
+export async function getAccount(): Promise<{ firstName: string; email: string; balance: string | null }> {
+  const res = await fetch(`${API_BASE}/v3/users/me`, { headers: { "x-api-key": apiKey() } });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new HeyGenError(json?.error?.message || `account fetch failed (${res.status})`, "account");
+  const d = json?.data ?? json;
+  let balance: string | null = null;
+  const w = d?.wallet;
+  if (w?.remaining_balance != null) {
+    balance = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: (w.currency || "usd").toUpperCase(),
+    }).format(w.remaining_balance);
+  } else if (typeof d?.remaining_balance === "number") {
+    balance = `$${d.remaining_balance.toFixed(2)}`;
+  } else if (typeof d?.remaining === "number") {
+    balance = `${d.remaining} credits`;
+  }
+  return { firstName: d?.first_name || "", email: d?.email || "", balance };
+}
+
 export async function download(url: string, dest: string): Promise<void> {
   const res = await fetch(url);
   if (!res.ok) throw new HeyGenError(`Download failed (${res.status})`, "download_failed");

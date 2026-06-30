@@ -21,6 +21,14 @@ img { max-width: 100%; }
 .sub { font-weight: 600; font-size: 16px; }
 .badge { font-family: var(--mono); font-size: 12px; color: var(--muted); border: 1px solid var(--border-strong); background: var(--surface); padding: 6px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px; }
 .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--stripe); }
+.acct { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.wallet { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--good); background: var(--good-wash); border: 1px solid #c7ecd9; border-radius: 999px; padding: 5px 11px; }
+.hello { font-size: 14px; font-weight: 600; color: var(--ink); }
+
+.generating { display: flex; flex-direction: column; align-items: center; gap: 16px; color: #cfc8e8; font-size: 15px; padding: 0 8%; text-align: center; }
+.spinner { width: 42px; height: 42px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.16); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 
 .lede { padding: 34px 0 22px; }
 .lede h1 { font-size: clamp(26px, 3.4vw, 36px); line-height: 1.12; letter-spacing: -0.02em; margin: 0 0 8px; text-wrap: balance; font-weight: 680; }
