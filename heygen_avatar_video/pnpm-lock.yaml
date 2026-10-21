@@ -34,6 +34,12 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
 
+  styles/product-launch: {}
+
+  styles/social: {}
+
+  styles/spokesperson: {}
+
 packages:
 
   '@derhuerst/http-basic@8.2.4':
@@ -804,8 +810,8 @@ packages:
   has-property-descriptors@1.0.2:
     resolution: {integrity: sha512-55JNKuIW+vq4Ke1BjOTjM2YctQIvCT7GFzHwmfZPGo5wnrgkid0YQtnAleFSqumZm4az3n2BS+erby5ipJdgrg==}
 
-  hono@4.12.27:
-    resolution: {integrity: sha512-1yrb/+w6HWQJrUCLkJ2IF5jNIPvvFkblV5RNOYl6bV+OA6p9GLcMpHFFGTosSvHvcAUibuUukRqhlYI4z32C7Q==}
+  hono@4.13.13:
+    resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
     engines: {node: '>=16.9.0'}
 
   http-proxy-agent@7.0.2:
@@ -1286,9 +1292,9 @@ snapshots:
       - utf-8-validate
     optional: true
 
-  '@hono/node-server@1.19.14(hono@4.12.27)':
+  '@hono/node-server@1.19.14(hono@4.13.13)':
     dependencies:
-      hono: 4.12.27
+      hono: 4.13.13
 
   '@img/colour@1.1.0': {}
 
@@ -1832,7 +1838,7 @@ snapshots:
     dependencies:
       es-define-property: 1.0.1
 
-  hono@4.12.27: {}
+  hono@4.13.13: {}
 
   http-proxy-agent@7.0.2:
     dependencies:
@@ -1861,7 +1867,7 @@ snapshots:
 
   hyperframes@0.7.20:
     dependencies:
-      '@hono/node-server': 1.19.14(hono@4.12.27)
+      '@hono/node-server': 1.19.14(hono@4.13.13)
       '@puppeteer/browsers': 2.13.2
       adm-zip: 0.5.18
       citty: 0.2.2
@@ -1870,7 +1876,7 @@ snapshots:
       esbuild: 0.25.12
       fontkit: 2.0.4
       giget: 3.3.0
-      hono: 4.12.27
+      hono: 4.13.13
       onnxruntime-node: 1.27.0
       open: 10.2.0
       postcss: 8.5.16
